@@ -1,0 +1,52 @@
+[gd_scene load_steps=5 format=3 uid="uid://g8nl5yla04y7"]
+
+[ext_resource type="Script" path="res://player.gd" id="1_7qklq"]
+[ext_resource type="ArrayMesh" uid="uid://da7ha2ixjvxmk" path="res://obj_mtl/ship3.obj" id="1_jvcg1"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_luhjr"]
+size = Vector3(0.7, 0.25, 1.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_piifi"]
+size = Vector3(2.4, 0.1, 0.5)
+
+[node name="ship" type="CharacterBody3D"]
+script = ExtResource("1_7qklq")
+
+[node name="mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_jvcg1")
+
+[node name="laser_mount" type="Node3D" parent="mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.316905)
+
+[node name="laser_mount2" type="Node3D" parent="mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.791745, -0.185402, -0.316905)
+
+[node name="target" type="Node3D" parent="mesh"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
+
+[node name="camera_anchor" type="Node3D" parent="."]
+
+[node name="camera" type="Camera3D" parent="camera_anchor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
+current = true
+
+[node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
+target_position = Vector3(0, 0, -25)
+
+[node name="body_collider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
+shape = SubResource("BoxShape3D_luhjr")
+
+[node name="wing collider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.25)
+shape = SubResource("BoxShape3D_piifi")
+
+[node name="boost_timer" type="Timer" parent="."]
+
+[node name="yaw_roll_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="laser_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="Line2D" type="Line2D" parent="."]

@@ -1,0 +1,153 @@
+[gd_scene load_steps=11 format=3 uid="uid://djedhq6bu54k5"]
+
+[ext_resource type="ArrayMesh" uid="uid://bk2xvj7a4qi7b" path="res://Asteroids/asteriod5.obj" id="1_gj8tp"]
+[ext_resource type="PackedScene" uid="uid://g8nl5yla04y7" path="res://ship.tscn" id="2_2apja"]
+[ext_resource type="Script" path="res://ui.gd" id="3_6gb0u"]
+[ext_resource type="Texture2D" uid="uid://cfifmuoslat6c" path="res://crosshair.png" id="4_2r2vm"]
+[ext_resource type="Texture2D" uid="uid://c52jm2tvd4tge" path="res://crosshair_arrow.png" id="5_u2um2"]
+[ext_resource type="Script" path="res://StaticBody3D.gd" id="6_qvfxx"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_afxhx"]
+radius = 6.107
+
+[sub_resource type="BoxMesh" id="BoxMesh_hcn8u"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2lo3o"]
+albedo_color = Color(1, 0, 0, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g1bpj"]
+size = Vector3(2, 2, 2)
+
+[node name="world" type="Node3D"]
+
+[node name="asteroid" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.865)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid"]
+transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
+mesh = ExtResource("1_gj8tp")
+skeleton = NodePath("../..")
+
+[node name="collider" type="CollisionShape3D" parent="asteroid"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
+shape = SubResource("SphereShape3D_afxhx")
+
+[node name="asteroid2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.73403, 11.5713, -32.1606)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid2"]
+transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
+mesh = ExtResource("1_gj8tp")
+skeleton = NodePath("../..")
+
+[node name="collider" type="CollisionShape3D" parent="asteroid2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
+shape = SubResource("SphereShape3D_afxhx")
+
+[node name="asteroid3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.3417, 4.72081, -21.1812)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid3"]
+transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
+mesh = ExtResource("1_gj8tp")
+skeleton = NodePath("../..")
+
+[node name="collider" type="CollisionShape3D" parent="asteroid3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
+shape = SubResource("SphereShape3D_afxhx")
+
+[node name="ship" parent="." instance=ExtResource("2_2apja")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5331, 0, 0)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.0639, 0)
+
+[node name="ui" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("3_6gb0u")
+
+[node name="velocity_label" type="Label" parent="ui"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+scale = Vector2(0.6, 0.6)
+text = "Velocity: <0, 0, 0>"
+
+[node name="crosshair" type="Sprite2D" parent="ui"]
+position = Vector2(320, 180)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("4_2r2vm")
+
+[node name="crosshair_arrow" type="Sprite2D" parent="ui/crosshair"]
+visible = false
+texture = ExtResource("5_u2um2")
+offset = Vector2(0, -12)
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.2226, 0, -26.2717)
+script = ExtResource("6_qvfxx")
+offset = Vector3(0, 10, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
+mesh = SubResource("BoxMesh_hcn8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_g1bpj")
+
+[node name="StaticBody3D2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.29025, 6.74181, -20.7879)
+script = ExtResource("6_qvfxx")
+offset = Vector3(0, 10, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D2"]
+mesh = SubResource("BoxMesh_hcn8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D2"]
+shape = SubResource("BoxShape3D_g1bpj")
+
+[node name="StaticBody3D3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.48719, -2.05384, -20.7879)
+script = ExtResource("6_qvfxx")
+offset = Vector3(0, 10, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D3"]
+mesh = SubResource("BoxMesh_hcn8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D3"]
+shape = SubResource("BoxShape3D_g1bpj")
+
+[node name="StaticBody3D4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.48719, 12.4734, -10.498)
+script = ExtResource("6_qvfxx")
+offset = Vector3(30, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D4"]
+mesh = SubResource("BoxMesh_hcn8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D4"]
+shape = SubResource("BoxShape3D_g1bpj")
+
+[node name="StaticBody3D5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.8585, 19.968, -27.8305)
+script = ExtResource("6_qvfxx")
+offset = Vector3(-30, 0, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D5"]
+mesh = SubResource("BoxMesh_hcn8u")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D5"]
+shape = SubResource("BoxShape3D_g1bpj")

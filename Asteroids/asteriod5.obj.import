@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bk2xvj7a4qi7b"
+path="res://.godot/imported/asteriod5.obj-21fb75c3f47e339cd6d1fe9329dc0692.mesh"
+
+[deps]
+
+files=["res://.godot/imported/asteriod5.obj-21fb75c3f47e339cd6d1fe9329dc0692.mesh"]
+
+source_file="res://Asteroids/asteriod5.obj"
+dest_files=["res://.godot/imported/asteriod5.obj-21fb75c3f47e339cd6d1fe9329dc0692.mesh", "res://.godot/imported/asteriod5.obj-21fb75c3f47e339cd6d1fe9329dc0692.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

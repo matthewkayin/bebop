@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c6jv5g73av2du"
+path="res://.godot/imported/asteroid21.obj-403352a086f286c4f0c27b00e7b8eaea.mesh"
+
+[deps]
+
+files=["res://.godot/imported/asteroid21.obj-403352a086f286c4f0c27b00e7b8eaea.mesh"]
+
+source_file="res://Asteroids/asteroid21.obj"
+dest_files=["res://.godot/imported/asteroid21.obj-403352a086f286c4f0c27b00e7b8eaea.mesh", "res://.godot/imported/asteroid21.obj-403352a086f286c4f0c27b00e7b8eaea.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

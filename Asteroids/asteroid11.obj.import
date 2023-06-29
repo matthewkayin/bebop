@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bgvat2mdhk1nf"
+path="res://.godot/imported/asteroid11.obj-0752f7446e6f065a6f93d8af2d499928.mesh"
+
+[deps]
+
+files=["res://.godot/imported/asteroid11.obj-0752f7446e6f065a6f93d8af2d499928.mesh"]
+
+source_file="res://Asteroids/asteroid11.obj"
+dest_files=["res://.godot/imported/asteroid11.obj-0752f7446e6f065a6f93d8af2d499928.mesh", "res://.godot/imported/asteroid11.obj-0752f7446e6f065a6f93d8af2d499928.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true
