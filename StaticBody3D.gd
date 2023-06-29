@@ -8,6 +8,7 @@ var end: Vector3
 var moving = false
 
 func _ready():
+    add_to_group("targets")
     start = position
     end = position + offset
     move()

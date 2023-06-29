@@ -6,6 +6,7 @@ extends CharacterBody3D
 @onready var yaw_roll_timer = $yaw_roll_timer
 @onready var camera = $camera_anchor/camera
 @onready var targeting_ray = $camera_anchor/camera/targeting_ray
+@onready var target_selection_ray = $camera_anchor/camera/target_selection_ray
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
@@ -37,11 +38,15 @@ var drifting = false
 
 var weapons_target
 var weapon_alternator = 0
+var target = null
+var crosshair_position = Vector2.ZERO
+var target_reticle_position = null
 
 var debug_display = []
 
 func _ready():
     targeting_ray.add_exception(self)
+    target_selection_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
 
 func _input(event):
@@ -86,6 +91,20 @@ func _physics_process(delta):
     if Input.is_action_pressed("shoot"):
         if laser_timer.is_stopped():
             shoot()
+    if Input.is_action_just_pressed("target"):
+        target = null
+        for _target in get_tree().get_nodes_in_group("targets"):
+            if target != null:
+                break
+            if camera.is_position_behind(_target.position):
+                continue
+            var target_screen_position = camera.unproject_position(_target.position)
+            if (target_screen_position - crosshair_position).length() <= 30:
+                target_selection_ray.look_at(_target.position)
+                target_selection_ray.force_raycast_update()
+                print(target_selection_ray.is_colliding(), " / ", target_selection_ray.get_collider())
+                if target_selection_ray.is_colliding() and target_selection_ray.get_collider() == _target:
+                    target = _target
 
     # Flight rotation
     for i in range(0, 3):
@@ -135,11 +154,6 @@ func _physics_process(delta):
     var thrust_input = Vector3.ZERO
     thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-    # if Input.is_action_pressed("joypad_thrust_mod"):
-        #thrust_input.y = z_input
-    #elif drifting:
-        # thrust_input.z = -z_input
-    # else:
     throttle = clamp(throttle + (z_input * 0.01), 0, 1)
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
     if Input.is_action_pressed("thrust_right"):
@@ -205,12 +219,19 @@ func _physics_process(delta):
         camera.fov = lerp(camera.fov, 75 + (32 * (velocity.length() / TERMINAL_VELOCITY)), delta)
 
     # set weapons target
+    target_reticle_position = null
+    if target != null and not camera.is_position_behind(target.position):
+        target_reticle_position = camera.unproject_position(target.position)
+
     weapons_target = $mesh/target.to_global($mesh/target.position)
+    if target_reticle_position != null and crosshair_position.distance_to(target_reticle_position) <= 25:
+        weapons_target = target.position
     targeting_ray.look_at(weapons_target)
     targeting_ray.force_raycast_update()
     if targeting_ray.is_colliding():
         weapons_target = targeting_ray.get_collision_point()
-
+    
+    crosshair_position = camera.unproject_position(weapons_target)
 
 func boost():
     has_boost = false
