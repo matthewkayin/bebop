@@ -33,6 +33,9 @@ current = true
 [node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
 target_position = Vector3(0, 0, -25)
 
+[node name="target_selection_ray" type="RayCast3D" parent="camera_anchor/camera"]
+target_position = Vector3(0, 0, -100)
+
 [node name="body_collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
 shape = SubResource("BoxShape3D_luhjr")
@@ -48,5 +51,3 @@ one_shot = true
 
 [node name="laser_timer" type="Timer" parent="."]
 one_shot = true
-
-[node name="Line2D" type="Line2D" parent="."]
