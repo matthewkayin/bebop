@@ -16,8 +16,8 @@ extends CharacterBody3D
 @export var TERMINAL_VELOCITY = 10
 @export var MAX_THROTTLE_VELOCITY = 7
 @export var max_roll_speed = 1.4
-@export var max_pitch_speed = 1.4
-@export var max_yaw_speed = 1.4
+@export var max_pitch_speed = 0.6
+@export var max_yaw_speed = 0.2
 var MAX_ROTATION_SPEED = Vector3(max_roll_speed, max_pitch_speed, max_yaw_speed)
 @export var ACCELERATION = 2.5
 @export var DECCELERATION = 2.5
