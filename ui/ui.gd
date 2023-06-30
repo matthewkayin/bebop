@@ -9,7 +9,7 @@ var player = null
 
 func _process(_delta):
     if player == null:
-        player = get_parent().get_node_or_null("ship")
+        player = get_parent().get_node_or_null("player")
         if player == null:
             return
     

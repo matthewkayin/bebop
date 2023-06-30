@@ -9,7 +9,7 @@ size = Vector3(0.7, 0.25, 1.8)
 [sub_resource type="BoxShape3D" id="BoxShape3D_piifi"]
 size = Vector3(2.4, 0.1, 0.5)
 
-[node name="ship" type="CharacterBody3D"]
+[node name="player" type="CharacterBody3D"]
 script = ExtResource("1_j1hqe")
 
 [node name="mesh" type="MeshInstance3D" parent="."]

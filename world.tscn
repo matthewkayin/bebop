@@ -19,6 +19,8 @@ size = Vector3(2, 2, 2)
 
 [node name="world" type="Node3D"]
 
+[node name="player" parent="." instance=ExtResource("4_aypf1")]
+
 [node name="asteroid" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.865)
 
@@ -124,6 +126,3 @@ surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D5"]
 shape = SubResource("BoxShape3D_g1bpj")
-
-[node name="ship" parent="." instance=ExtResource("4_aypf1")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.2765, 0, 0)
