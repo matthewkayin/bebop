@@ -13,10 +13,18 @@ extends CharacterBody3D
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
-const TERMINAL_VELOCITY = 10
-const MAX_THROTTLE_VELOCITY = 7
-const MAX_ROTATION_SPEED = Vector3(1.4, 0.8, 0.2)
-const ACCELERATION = Vector3(2.5, 2.5, 2.5)
+@export var TERMINAL_VELOCITY = 10
+@export var MAX_THROTTLE_VELOCITY = 7
+@export var max_roll_speed = 1.4
+@export var max_pitch_speed = 1.4
+@export var max_yaw_speed = 1.4
+var MAX_ROTATION_SPEED = Vector3(max_roll_speed, max_pitch_speed, max_yaw_speed)
+@export var ACCELERATION = 2.5
+@export var DECCELERATION = 2.5
+@export var boost_impulse_strength = 30
+@export var boost_impulse_duration = 1
+@export var collision_impulse_modifier = 100
+@export var collision_rotation_modifier = 5
 
 enum YawRoll {
     OFF,
@@ -24,7 +32,7 @@ enum YawRoll {
     ON_LOW_ROLL
 }
 
-var rotation_type = YawRoll.OFF
+@export var rotation_type: YawRoll = YawRoll.OFF
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
 
@@ -154,7 +162,6 @@ func _physics_process(delta):
         var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
         if drifting:
             thrust_input.z = z_input
-            throttle = 0
         else:
             throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
@@ -163,7 +170,7 @@ func _physics_process(delta):
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
     for i in range(0, 3):
-        acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION[i]
+        acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION
 
     var decceleration = Vector3.ZERO
     if not drifting:
@@ -171,13 +178,13 @@ func _physics_process(delta):
             var velocity_component_in_basis_direction = mesh.transform.basis[i] * (velocity.dot(mesh.transform.basis[i]) / mesh.transform.basis[i].length())
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
+                    acceleration += -mesh.transform.basis[i] * ACCELERATION
                 elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (MAX_THROTTLE_VELOCITY * throttle) + 5:
-                    decceleration += mesh.transform.basis[i] * ACCELERATION[i]
+                    decceleration += mesh.transform.basis[i] * DECCELERATION
                 elif velocity_component_in_basis_direction.length() < MAX_THROTTLE_VELOCITY * throttle:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
-            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ACCELERATION[i] * delta: 
-                decceleration += -velocity_component_in_basis_direction.normalized() * ACCELERATION[i]
+                    acceleration += -mesh.transform.basis[i] * ACCELERATION
+            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ACCELERATION * delta: 
+                decceleration += -velocity_component_in_basis_direction.normalized() * DECCELERATION
     if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
     else:
@@ -207,11 +214,11 @@ func _physics_process(delta):
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
-        collision_impulse = collision.get_normal() * velocity.length() * 100
+        collision_impulse = collision.get_normal() * velocity.length() * collision_impulse_modifier
         rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
         rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
         rotation_speed[2] = collision.get_normal().signed_angle_to(velocity, Vector3.RIGHT)
-        rotation_speed *= 5
+        rotation_speed *= collision_rotation_modifier
 
     # set camera fov
     if boost_impulse == Vector3.ZERO:
@@ -242,8 +249,8 @@ func boost():
     var camera_tween = get_tree().create_tween()
     camera_tween.tween_property(camera, "fov", 115, 0.2)
     await camera_tween.finished
-    boost_impulse = -mesh.transform.basis.z * 30
-    boost_timer.start(1)
+    boost_impulse = -mesh.transform.basis.z * boost_impulse_strength
+    boost_timer.start(boost_impulse_duration)
     await boost_timer.timeout
     boost_impulse = Vector3.ZERO
     boost_timer.start(10)
