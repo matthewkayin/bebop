@@ -19,7 +19,7 @@ config/icon="res://icon.svg"
 
 window/size/viewport_width=640
 window/size/viewport_height=360
-window/stretch/mode="canvas_items"
+window/stretch/mode="viewport"
 
 [input]
 
@@ -120,5 +120,10 @@ yaw_left={
 yaw_right={
 "deadzone": 0.5,
 "events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":10,"pressure":0.0,"pressed":true,"script":null)
+]
+}
+target={
+"deadzone": 0.5,
+"events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":3,"pressure":0.0,"pressed":true,"script":null)
 ]
 }

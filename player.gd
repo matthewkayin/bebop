@@ -70,12 +70,6 @@ func _input(event):
 
         if yaw_roll_timer.is_stopped() and prev_roll_input == 0 and rotation_input.x != 0:
             yaw_roll_timer.start(0.25)
-        # if Input.is_action_pressed("yaw_roll"):
-            # rotation_input.x = 0
-            #rotation_input.z = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
-        #else:
-            # rotation_input.x = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
-            # rotation_input.z = 0
 
 func _physics_process(delta):
     # misc inputs
@@ -102,7 +96,6 @@ func _physics_process(delta):
             if (target_screen_position - crosshair_position).length() <= 30:
                 target_selection_ray.look_at(_target.position)
                 target_selection_ray.force_raycast_update()
-                print(target_selection_ray.is_colliding(), " / ", target_selection_ray.get_collider())
                 if target_selection_ray.is_colliding() and target_selection_ray.get_collider() == _target:
                     target = _target
 
@@ -222,10 +215,12 @@ func _physics_process(delta):
     target_reticle_position = null
     if target != null and not camera.is_position_behind(target.position):
         target_reticle_position = camera.unproject_position(target.position)
+        if not get_viewport().get_visible_rect().has_point(target_reticle_position):
+            target_reticle_position = null
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
-    if target_reticle_position != null and crosshair_position.distance_to(target_reticle_position) <= 25:
-        weapons_target = target.position
+    if target_reticle_position != null and position.distance_to(target.position) >= 5:
+        weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
     targeting_ray.look_at(weapons_target)
     targeting_ray.force_raycast_update()
     if targeting_ray.is_colliding():

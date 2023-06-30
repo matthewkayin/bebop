@@ -4,11 +4,14 @@ extends StaticBody3D
 
 var start: Vector3
 var end: Vector3
+var velocity = Vector3.ZERO
+var last_position
 
 var moving = false
 
 func _ready():
     add_to_group("targets")
+    last_position = position
     start = position
     end = position + offset
     move()
@@ -21,10 +24,11 @@ func move():
     await tween.finished
     moving = false
 
-func _process(_delta):
+func _physics_process(delta):
     if not moving:
         move()
+    velocity = (position - last_position) / delta
+    last_position = position
 
 func handle_bullet():
-    print("hey")
     queue_free()
