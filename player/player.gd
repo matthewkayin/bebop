@@ -24,10 +24,9 @@ enum YawRoll {
     ON_LOW_ROLL
 }
 
-var rotation_type = YawRoll.ON_LOW_ROLL
+var rotation_type = YawRoll.OFF
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
-var rotation_values = Vector3(0, 0, 0)
 
 var throttle = 0
 
@@ -65,8 +64,11 @@ func _input(event):
     if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
         var prev_roll_input = rotation_input.x
         rotation_input.x = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
-        rotation_input.y = Input.get_action_strength("pitch_down") - Input.get_action_strength("pitch_up")
+        rotation_input.y = Input.get_action_strength("pitch_up") - Input.get_action_strength("pitch_down")
         rotation_input.z = Input.get_action_strength("yaw_left") - Input.get_action_strength("yaw_right")
+        if Input.is_action_pressed("yaw_roll"):
+            rotation_input.z = rotation_input.x
+            rotation_input.x = 0
 
         if yaw_roll_timer.is_stopped() and prev_roll_input == 0 and rotation_input.x != 0:
             yaw_roll_timer.start(0.25)
@@ -145,14 +147,16 @@ func _physics_process(delta):
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
-    thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
-    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-    throttle = clamp(throttle + (z_input * 0.01), 0, 1)
-    thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    if Input.is_action_pressed("thrust_right"):
-        thrust_input.x = 1
-    if Input.is_action_pressed("thrust_left"):
-        thrust_input.x = -1
+    if Input.is_action_pressed("thrust_mod"):
+        thrust_input.y = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+        thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
+    else:
+        var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+        if drifting:
+            thrust_input.z = z_input
+            throttle = 0
+        else:
+            throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     debug_display.append("Throttle: " + str(snapped(throttle, 0.01)))
 
@@ -181,6 +185,8 @@ func _physics_process(delta):
 
     # debug display
     debug_display.append("Velocity: " + str(snapped(velocity.length(), 0.1)))
+    debug_display.append("thrust input " + str(thrust_input))
+    debug_display.append("rotation input " + str(rotation_input))
     if boost_impulse != Vector3.ZERO:
         debug_display.append("BOOST!")
     elif has_boost:
