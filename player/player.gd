@@ -11,7 +11,7 @@ extends CharacterBody3D
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
 
-@onready var laser_scene = preload("res://laser.tscn")
+@onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
 const TERMINAL_VELOCITY = 10
 const MAX_THROTTLE_VELOCITY = 7

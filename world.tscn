@@ -1,12 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://djedhq6bu54k5"]
+[gd_scene load_steps=9 format=3 uid="uid://djedhq6bu54k5"]
 
 [ext_resource type="ArrayMesh" uid="uid://bk2xvj7a4qi7b" path="res://Asteroids/asteriod5.obj" id="1_gj8tp"]
-[ext_resource type="PackedScene" uid="uid://g8nl5yla04y7" path="res://ship.tscn" id="2_2apja"]
-[ext_resource type="Script" path="res://ui.gd" id="3_6gb0u"]
-[ext_resource type="Texture2D" uid="uid://cfifmuoslat6c" path="res://crosshair.png" id="4_2r2vm"]
-[ext_resource type="Texture2D" uid="uid://c52jm2tvd4tge" path="res://crosshair_arrow.png" id="5_u2um2"]
+[ext_resource type="PackedScene" uid="uid://df4xxm47v5pld" path="res://ui/ui.tscn" id="2_1m3i6"]
+[ext_resource type="PackedScene" uid="uid://g8nl5yla04y7" path="res://player/player.tscn" id="4_aypf1"]
 [ext_resource type="Script" path="res://StaticBody3D.gd" id="6_qvfxx"]
-[ext_resource type="Texture2D" uid="uid://dvyyjsvhqswbl" path="res://target.png" id="6_w0bcx"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_afxhx"]
 radius = 6.107
@@ -58,39 +55,10 @@ skeleton = NodePath("../..")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
 shape = SubResource("SphereShape3D_afxhx")
 
-[node name="ship" parent="." instance=ExtResource("2_2apja")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5331, 0, 0)
-
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.0639, 0)
 
-[node name="ui" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
-script = ExtResource("3_6gb0u")
-
-[node name="velocity_label" type="Label" parent="ui"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-scale = Vector2(0.6, 0.6)
-text = "Velocity: <0, 0, 0>"
-
-[node name="crosshair" type="Sprite2D" parent="ui"]
-position = Vector2(320, 180)
-scale = Vector2(0.25, 0.25)
-texture = ExtResource("4_2r2vm")
-
-[node name="crosshair_arrow" type="Sprite2D" parent="ui/crosshair"]
-visible = false
-texture = ExtResource("5_u2um2")
-offset = Vector2(0, -12)
-
-[node name="target" type="Sprite2D" parent="ui"]
-texture_filter = 1
-texture = ExtResource("6_w0bcx")
+[node name="ui" parent="." instance=ExtResource("2_1m3i6")]
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.2226, 0, -26.2717)
@@ -156,3 +124,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_2lo3o")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D5"]
 shape = SubResource("BoxShape3D_g1bpj")
+
+[node name="ship" parent="." instance=ExtResource("4_aypf1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.2765, 0, 0)

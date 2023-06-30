@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://g8nl5yla04y7"]
 
-[ext_resource type="Script" path="res://player.gd" id="1_7qklq"]
+[ext_resource type="Script" path="res://player/player.gd" id="1_j1hqe"]
 [ext_resource type="ArrayMesh" uid="uid://da7ha2ixjvxmk" path="res://obj_mtl/ship3.obj" id="1_jvcg1"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_luhjr"]
@@ -10,7 +10,7 @@ size = Vector3(0.7, 0.25, 1.8)
 size = Vector3(2.4, 0.1, 0.5)
 
 [node name="ship" type="CharacterBody3D"]
-script = ExtResource("1_7qklq")
+script = ExtResource("1_j1hqe")
 
 [node name="mesh" type="MeshInstance3D" parent="."]
 mesh = ExtResource("1_jvcg1")
