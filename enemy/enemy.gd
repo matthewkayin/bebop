@@ -8,6 +8,7 @@ extends CharacterBody3D
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
+@onready var camera_anchor = $camera_anchor
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
@@ -15,8 +16,6 @@ const TERMINAL_VELOCITY = 10
 const MAX_THROTTLE_VELOCITY = 7
 const MAX_ROTATION_SPEED = Vector3(1.4, 0.8, 0.6)
 const ACCELERATION = Vector3(2.5, 2.5, 2.5)
-
-var target_position = null
 
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
@@ -32,6 +31,7 @@ var drifting = false
 var weapons_target
 var weapon_alternator = 0
 var target = null
+var number = 0
 
 func _ready():
     targeting_ray.add_exception(self)
@@ -39,36 +39,56 @@ func _ready():
     laser_timer.timeout.connect(laser_timer_timeout)
 
 func pathfind():
-    if target_position == null:
+    if target == null:
         throttle = 0
         return
-    if position.distance_to(target_position) <= 1:
-        throttle = 0
-        return
-
-    var pt = (target_position - position).normalized()
-    var py1 = Vector2((-mesh.transform.basis.z).x, (-mesh.transform.basis.z).z)
-    var py2 = Vector2(pt.x, pt.z)
-    var px1 = Vector2((-mesh.transform.basis.z).x, (-mesh.transform.basis.z).y)
-    var px2 = Vector2(pt.x, pt.y)
-    var yaw_angle = rad_to_deg(py2.angle_to(py1))
-    var pitch_angle = rad_to_deg(px1.angle_to(px2))
+    #if position.distance_to(target_position) <= 1:
+        #throttle = 0
+        #return
     rotation_input = Vector3.ZERO
-    var threshold = 5
-    if yaw_angle > threshold:
-        rotation_input.x = 1
-    elif yaw_angle < -threshold:
-        rotation_input.x = -1
-    if pitch_angle > threshold:
-        rotation_input.y = 1
-    elif pitch_angle < -threshold:
-        rotation_input.y = -1
+    var direction = position.direction_to(target.position)
+    if position.distance_to(target.position) <= 3: # should compute this based on speed, angle to obstacle, and size of obstacle
+        direction += (position - target.position) * 2
+
+    var direction_xbasis = (mesh.transform.basis.x * direction.dot(mesh.transform.basis.x)) / mesh.transform.basis.x.length()
+    var direction_ybasis = (mesh.transform.basis.y * direction.dot(mesh.transform.basis.y)) / mesh.transform.basis.y.length()
+    if direction_xbasis.length() > 0.3:
+        if direction_xbasis.normalized() == mesh.transform.basis.x:
+            rotation_input.x = -1
+        elif direction_xbasis.normalized() == -mesh.transform.basis.x:
+            rotation_input.x = 1
+    elif direction_xbasis.length() > 0.1:
+        if direction_xbasis.normalized() == mesh.transform.basis.x:
+            rotation_input.z = -1
+        elif direction_xbasis.normalized() == -mesh.transform.basis.x:
+            rotation_input.z = 1
+    if direction_ybasis.length() > 0.2:
+        if direction_ybasis.normalized() == mesh.transform.basis.y:
+            rotation_input.y = 1
+        elif direction_ybasis.normalized() == -mesh.transform.basis.y:
+            rotation_input.y = -1
+
+    if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
+        throttle = 0.45
+    else:
+        var desired_vf = target.velocity.length()
+        var desired_follow_distance = 10
+        var time_to_deccel = abs(desired_vf - velocity.length()) / ACCELERATION.x
+        var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ACCELERATION.x * (time_to_deccel * time_to_deccel))
+        if distance_to_deccel <= 0:
+            throttle = desired_vf / MAX_THROTTLE_VELOCITY
+        else:
+            throttle = 1
+
+        if position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf:
+            thrust_input.z = 1
+        else:
+            thrust_input.z = 0
+    print(velocity.length(), " / ", thrust_input)
 
 func _physics_process(delta):
-    if target_position == null:
-        var point = get_node_or_null("../point1")
-        if point != null:
-            target_position = point.position
+    if target == null:
+        target = get_node_or_null("../point1")
 
     pathfind()
 
@@ -92,6 +112,7 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * 1.5)
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
@@ -101,7 +122,7 @@ func _physics_process(delta):
     var decceleration = Vector3.ZERO
     if not drifting:
         for i in range(0, 3):
-            var velocity_component_in_basis_direction = mesh.transform.basis[i] * (velocity.dot(mesh.transform.basis[i]) / mesh.transform.basis[i].length())
+            var velocity_component_in_basis_direction = (mesh.transform.basis[i] * velocity.dot(mesh.transform.basis[i]) / mesh.transform.basis[i].length())
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
                     acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
