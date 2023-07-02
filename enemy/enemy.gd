@@ -3,12 +3,11 @@ extends CharacterBody3D
 @onready var mesh = $mesh
 @onready var boost_timer = $boost_timer
 @onready var yaw_roll_timer = $yaw_roll_timer
-@onready var targeting_ray = $mesh/targeting_ray
-@onready var target_selection_ray = $mesh/target_selection_ray
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
 @onready var camera_anchor = $camera_anchor
+@onready var avoidance_ray = $mesh/avoidance_ray
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
@@ -34,21 +33,28 @@ var target = null
 var number = 0
 
 func _ready():
-    targeting_ray.add_exception(self)
-    target_selection_ray.add_exception(self)
+    avoidance_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
 
 func pathfind():
-    if target == null:
-        throttle = 0
-        return
-    #if position.distance_to(target_position) <= 1:
-        #throttle = 0
-        #return
+    throttle = 0
     rotation_input = Vector3.ZERO
+    thrust_input = Vector3.ZERO
+
+    if target == null:
+        return
+
     var direction = position.direction_to(target.position)
-    if position.distance_to(target.position) <= 3: # should compute this based on speed, angle to obstacle, and size of obstacle
-        direction += (position - target.position) * 2
+    for obstacle in get_tree().get_nodes_in_group("obstacles"):
+        if obstacle == self:
+            continue
+        var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
+        if collision_distance <= 15:
+            var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(direction))
+            var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / 15)) * 0.5)
+            var avoidance = -direction * avoidance_strength * 2
+            direction += avoidance
+    direction = direction.normalized()
 
     var direction_xbasis = (mesh.transform.basis.x * direction.dot(mesh.transform.basis.x)) / mesh.transform.basis.x.length()
     var direction_ybasis = (mesh.transform.basis.y * direction.dot(mesh.transform.basis.y)) / mesh.transform.basis.y.length()
@@ -72,7 +78,7 @@ func pathfind():
         throttle = 0.45
     else:
         var desired_vf = target.velocity.length()
-        var desired_follow_distance = 10
+        var desired_follow_distance = 15
         var time_to_deccel = abs(desired_vf - velocity.length()) / ACCELERATION.x
         var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ACCELERATION.x * (time_to_deccel * time_to_deccel))
         if distance_to_deccel <= 0:
@@ -82,9 +88,6 @@ func pathfind():
 
         if position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf:
             thrust_input.z = 1
-        else:
-            thrust_input.z = 0
-    print(velocity.length(), " / ", thrust_input)
 
 func _physics_process(delta):
     if target == null:
@@ -146,6 +149,7 @@ func _physics_process(delta):
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
+        print("bonk")
         collision_impulse = collision.get_normal() * velocity.length() * 100
         rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
         rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
@@ -155,10 +159,10 @@ func _physics_process(delta):
     weapons_target = $mesh/target.to_global($mesh/target.position)
     if target != null and position.distance_to(target.position) >= 5:
         weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
-    targeting_ray.look_at(weapons_target)
-    targeting_ray.force_raycast_update()
-    if targeting_ray.is_colliding():
-        weapons_target = targeting_ray.get_collision_point()
+    # targeting_ray.look_at(weapons_target)
+    # targeting_ray.force_raycast_update()
+    # if targeting_ray.is_colliding():
+        # weapons_target = targeting_ray.get_collision_point()
 
 func boost():
     has_boost = false

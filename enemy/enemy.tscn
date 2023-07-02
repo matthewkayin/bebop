@@ -19,13 +19,8 @@ script = ExtResource("1_c4ye0")
 mesh = ExtResource("2_6iajo")
 surface_material_override/0 = SubResource("StandardMaterial3D_3fc03")
 
-[node name="targeting_ray" type="RayCast3D" parent="mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
+[node name="avoidance_ray" type="RayCast3D" parent="mesh"]
 target_position = Vector3(0, 0, -25)
-
-[node name="target_selection_ray" type="RayCast3D" parent="mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
-target_position = Vector3(0, 0, -100)
 
 [node name="laser_mount" type="Node3D" parent="mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.316905)
@@ -57,9 +52,3 @@ one_shot = true
 [node name="camera" type="Camera3D" parent="camera_anchor"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
 current = true
-
-[node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
-target_position = Vector3(0, 0, -25)
-
-[node name="target_selection_ray" type="RayCast3D" parent="camera_anchor/camera"]
-target_position = Vector3(0, 0, -100)

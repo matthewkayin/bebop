@@ -125,12 +125,12 @@ func _physics_process(delta):
             rotation_input[i] = clamp(rotation_input[i], -3, 3)
 
     # flight assist rotation correction
-    if not drifting:
-        for i in range(0, 3):
-            if rotation_speed[i] > 0:
-                rotation_speed[i] -= 0.02
-            elif rotation_speed[i] < 0:
-                rotation_speed[i] += 0.02
+    # if not drifting:
+    for i in range(0, 3):
+        if rotation_speed[i] > 0:
+            rotation_speed[i] -= 0.02
+        elif rotation_speed[i] < 0:
+            rotation_speed[i] += 0.02
 
     var roll = rotation_input.x
     var yaw = rotation_input.z
@@ -161,7 +161,7 @@ func _physics_process(delta):
     else:
         var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
         if drifting:
-            thrust_input.z = z_input
+            thrust_input.z = -z_input
         else:
             throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
