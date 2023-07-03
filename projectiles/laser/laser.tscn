@@ -19,6 +19,7 @@ height = 1.0
 radius = 0.05
 
 [node name="laser" type="StaticBody3D"]
+collision_layer = 0
 script = ExtResource("1_elo6w")
 
 [node name="beam" type="MeshInstance3D" parent="."]
