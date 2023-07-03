@@ -1,11 +1,13 @@
 extends CharacterBody3D
 
+@onready var helpers = get_node("/root/Helpers")
+
 @onready var mesh = $mesh
 @onready var boost_timer = $boost_timer
-@onready var yaw_roll_timer = $yaw_roll_timer
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
+@onready var targeting_ray = $mesh/targeting_ray
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
@@ -25,80 +27,88 @@ var boost_impulse = Vector3.ZERO
 var collision_impulse = Vector3.ZERO
 var drifting = false
 
-var weapons_target
+var weapons_target = null
 var weapon_alternator = 0
 var target = null
 var number = 0
 
-func _ready():
-    laser_timer.timeout.connect(laser_timer_timeout)
+var collision_radius = 0
 
-func pathfind():
+var health = 100
+
+func _ready():
+    add_to_group("obstacles")
+    add_to_group("targets")
+    collision_radius = $avoidance_sphere.shape.radius
+    targeting_ray.add_exception(self)
+
+func _physics_process(delta):
+    if target == null:
+        target = get_node_or_null("../player")
+
+    # pathfinding
     throttle = 0
     rotation_input = Vector3.ZERO
     thrust_input = Vector3.ZERO
 
-    if target == null:
-        return
+    if target != null:
+        # set initial direction towards target
+        var direction = position.direction_to(target.position)
 
-    var direction = position.direction_to(target.position)
-    var collision_eminent = false
-    for obstacle in get_tree().get_nodes_in_group("obstacles"):
-        if obstacle == self:
-            continue
-        var relative_velocity = velocity - obstacle.velocity
-        var obstacle_direction = position.direction_to(obstacle.position)
-        relative_velocity = (obstacle_direction * relative_velocity.dot(obstacle_direction) / obstacle_direction.length())
-        var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ACCELERATION.x) + obstacle.collision_radius
-        var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
-        if collision_distance <= stop_distance:
-            var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(obstacle.position)))
-            var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
-            if collision_distance / stop_distance >= 0.75:
-                collision_eminent = true
-            var avoidance = -position.direction_to(obstacle.position) * avoidance_strength * 2
-            print(obstacle.name, " / ", avoidance_strength, " / ", collision_angle)
-            direction += avoidance
-    direction = direction.normalized()
+        # obstacle avoidance
+        var collision_eminent = false
+        for obstacle in get_tree().get_nodes_in_group("obstacles"):
+            if obstacle == self:
+                continue
+            # calculate avoidance radius 
+            var relative_velocity = helpers.vector_component_in_vector_direction(velocity - obstacle.velocity, position.direction_to(obstacle.position))
+            var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ACCELERATION.x) + obstacle.collision_radius
+            var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
+            if collision_distance <= stop_distance:
+                # calculate and apply avoidance
+                var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(obstacle.position)))
+                var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
+                # used further down in the code to cause the ship to hit the brakes if it's too close to a collision
+                if collision_distance / stop_distance >= 0.75:
+                    collision_eminent = true
+                var avoidance = -position.direction_to(obstacle.position) * avoidance_strength * 2
+                direction += avoidance
+        direction = direction.normalized()
 
-    var direction_xbasis = (mesh.transform.basis.x * direction.dot(mesh.transform.basis.x)) / mesh.transform.basis.x.length()
-    var direction_ybasis = (mesh.transform.basis.y * direction.dot(mesh.transform.basis.y)) / mesh.transform.basis.y.length()
-    if direction_xbasis.length() > 0.3:
-        if direction_xbasis.normalized() == mesh.transform.basis.x:
-            rotation_input.x = -1
-        elif direction_xbasis.normalized() == -mesh.transform.basis.x:
-            rotation_input.x = 1
-    elif direction_xbasis.length() > 0.1:
-        if direction_xbasis.normalized() == mesh.transform.basis.x:
-            rotation_input.z = -1
-        elif direction_xbasis.normalized() == -mesh.transform.basis.x:
-            rotation_input.z = 1
-    if direction_ybasis.length() > 0.2:
-        if direction_ybasis.normalized() == mesh.transform.basis.y:
-            rotation_input.y = 1
-        elif direction_ybasis.normalized() == -mesh.transform.basis.y:
-            rotation_input.y = -1
+        # determine rotation inputs
+        var direction_xbasis = helpers.vector_component_in_vector_direction(direction, mesh.transform.basis.x)
+        var direction_ybasis = helpers.vector_component_in_vector_direction(direction, mesh.transform.basis.y)
+        if direction_xbasis.length() > 0.3:
+            if direction_xbasis.normalized() == mesh.transform.basis.x:
+                rotation_input.x = -1
+            elif direction_xbasis.normalized() == -mesh.transform.basis.x:
+                rotation_input.x = 1
+        elif direction_xbasis.length() > 0.1:
+            if direction_xbasis.normalized() == mesh.transform.basis.x:
+                rotation_input.z = -1
+            elif direction_xbasis.normalized() == -mesh.transform.basis.x:
+                rotation_input.z = 1
+        if direction_ybasis.length() > 0.2:
+            if direction_ybasis.normalized() == mesh.transform.basis.y:
+                rotation_input.y = 1
+            elif direction_ybasis.normalized() == -mesh.transform.basis.y:
+                rotation_input.y = -1
 
-    if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
-        throttle = 0.45
-    else:
-        var desired_vf = target.velocity.length()
-        var desired_follow_distance = 15
-        var time_to_deccel = abs(desired_vf - velocity.length()) / ACCELERATION.x
-        var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ACCELERATION.x * (time_to_deccel * time_to_deccel))
-        if distance_to_deccel <= 0:
-            throttle = desired_vf / MAX_THROTTLE_VELOCITY
+        # determine throttle and thrust inputs
+        if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
+            throttle = 0.45
         else:
-            throttle = 1
+            var desired_vf = target.velocity.length()
+            var desired_follow_distance = 15
+            var time_to_deccel = abs(desired_vf - velocity.length()) / ACCELERATION.x
+            var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ACCELERATION.x * (time_to_deccel * time_to_deccel))
+            if distance_to_deccel <= 0:
+                throttle = desired_vf / MAX_THROTTLE_VELOCITY
+            else:
+                throttle = 1
 
-        if collision_eminent or (position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf):
-            thrust_input.z = 1
-
-func _physics_process(delta):
-    if target == null:
-        target = get_node_or_null("../point1")
-
-    pathfind()
+            if collision_eminent or (position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf):
+                thrust_input.z = 1
 
     # flight assist rotation correction
     if not drifting:
@@ -129,7 +139,7 @@ func _physics_process(delta):
     var decceleration = Vector3.ZERO
     if not drifting:
         for i in range(0, 3):
-            var velocity_component_in_basis_direction = (mesh.transform.basis[i] * velocity.dot(mesh.transform.basis[i]) / mesh.transform.basis[i].length())
+            var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
                     acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
@@ -153,20 +163,28 @@ func _physics_process(delta):
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
-        print("bonk")
         collision_impulse = collision.get_normal() * velocity.length() * 100
         rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
         rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
         rotation_speed[2] = collision.get_normal().signed_angle_to(velocity, Vector3.RIGHT)
         rotation_speed *= 5
 
-    weapons_target = $mesh/target.to_global($mesh/target.position)
-    if target != null and position.distance_to(target.position) >= 5:
+    # try to lock on to target
+    weapons_target = null
+    # note: max range is handled by the ray length
+    if target != null and position.distance_to(target.position) >= 5 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
         weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
-    # targeting_ray.look_at(weapons_target)
-    # targeting_ray.force_raycast_update()
-    # if targeting_ray.is_colliding():
-        # weapons_target = targeting_ray.get_collision_point()
+        targeting_ray.look_at(weapons_target)
+        targeting_ray.force_raycast_update()
+        if targeting_ray.is_colliding():
+            weapons_target = targeting_ray.get_collision_point()
+        else:
+            weapons_target = null
+
+    # shoot target
+    if weapons_target != null:
+        if laser_timer.is_stopped():
+            shoot()
 
 func boost():
     has_boost = false
@@ -181,9 +199,6 @@ func boost():
     await boost_timer.timeout
     has_boost = true
 
-func laser_timer_timeout():
-    pass
-
 func shoot():
     var bullet = laser_scene.instantiate()
     get_parent().add_child(bullet)
@@ -196,3 +211,8 @@ func shoot():
     bullet.add_collision_exception_with(self)
     bullet.aim(weapons_target)
     laser_timer.start(0.05)
+
+func handle_bullet():
+    health -= 1
+    if health <= 0:
+        queue_free()

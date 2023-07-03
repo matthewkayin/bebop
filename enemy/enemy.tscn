@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://c7vpudmpp13vy"]
+[gd_scene load_steps=7 format=3 uid="uid://c7vpudmpp13vy"]
 
 [ext_resource type="Script" path="res://enemy/enemy.gd" id="1_c4ye0"]
 [ext_resource type="ArrayMesh" uid="uid://da7ha2ixjvxmk" path="res://obj_mtl/ship3.obj" id="2_6iajo"]
@@ -11,6 +11,9 @@ size = Vector3(0.7, 0.25, 1.8)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_piifi"]
 size = Vector3(2.4, 0.1, 0.5)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_f7pmd"]
+radius = 1.0
 
 [node name="enemy" type="CharacterBody3D"]
 script = ExtResource("1_c4ye0")
@@ -25,8 +28,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.31690
 [node name="laser_mount2" type="Node3D" parent="mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.791745, -0.185402, -0.316905)
 
-[node name="target" type="Node3D" parent="mesh"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
+[node name="targeting_ray" type="RayCast3D" parent="mesh"]
+target_position = Vector3(0, 0, -25)
 
 [node name="body_collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
@@ -36,16 +39,11 @@ shape = SubResource("BoxShape3D_luhjr")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.25)
 shape = SubResource("BoxShape3D_piifi")
 
-[node name="boost_timer" type="Timer" parent="."]
+[node name="avoidance_sphere" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_f7pmd")
+disabled = true
 
-[node name="yaw_roll_timer" type="Timer" parent="."]
-one_shot = true
+[node name="boost_timer" type="Timer" parent="."]
 
 [node name="laser_timer" type="Timer" parent="."]
 one_shot = true
-
-[node name="camera_anchor" type="Node3D" parent="."]
-
-[node name="camera" type="Camera3D" parent="camera_anchor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
-current = true

@@ -1,5 +1,7 @@
 extends CharacterBody3D
 
+@onready var helpers = get_node("/root/Helpers")
+
 @onready var mesh = $mesh
 @onready var camera_anchor = $camera_anchor
 @onready var boost_timer = $boost_timer
@@ -49,9 +51,15 @@ var target = null
 var crosshair_position = Vector2.ZERO
 var target_reticle_position = null
 
+var collision_radius = 0
+
+var health = 100
+
 var debug_display = []
 
 func _ready():
+    add_to_group("obstacles")
+    collision_radius = $avoidance_sphere.shape.radius
     targeting_ray.add_exception(self)
     target_selection_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
@@ -82,6 +90,8 @@ func _input(event):
             yaw_roll_timer.start(0.25)
 
 func _physics_process(delta):
+    if not visible:
+        return
     # misc inputs
     if Input.is_action_just_pressed("escape"):
         if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -125,12 +135,12 @@ func _physics_process(delta):
             rotation_input[i] = clamp(rotation_input[i], -3, 3)
 
     # flight assist rotation correction
-    # if not drifting:
-    for i in range(0, 3):
-        if rotation_speed[i] > 0:
-            rotation_speed[i] -= 0.02
-        elif rotation_speed[i] < 0:
-            rotation_speed[i] += 0.02
+    if not drifting:
+        for i in range(0, 3):
+            if rotation_speed[i] > 0:
+                rotation_speed[i] -= 0.02
+            elif rotation_speed[i] < 0:
+                rotation_speed[i] += 0.02
 
     var roll = rotation_input.x
     var yaw = rotation_input.z
@@ -165,6 +175,9 @@ func _physics_process(delta):
         else:
             throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
+    debug_display.append("HEALTH: " + str(health))
+    if target != null:
+        debug_display.append("ENEMY_HEALTH: " + str(target.health))
     debug_display.append("Throttle: " + str(snapped(throttle, 0.01)))
 
     # acceleration and decceleration
@@ -175,7 +188,7 @@ func _physics_process(delta):
     var decceleration = Vector3.ZERO
     if not drifting:
         for i in range(0, 3):
-            var velocity_component_in_basis_direction = mesh.transform.basis[i] * (velocity.dot(mesh.transform.basis[i]) / mesh.transform.basis[i].length())
+            var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
                     acceleration += -mesh.transform.basis[i] * ACCELERATION
@@ -192,8 +205,6 @@ func _physics_process(delta):
 
     # debug display
     debug_display.append("Velocity: " + str(snapped(velocity.length(), 0.1)))
-    debug_display.append("thrust input " + str(thrust_input))
-    debug_display.append("rotation input " + str(rotation_input))
     if boost_impulse != Vector3.ZERO:
         debug_display.append("BOOST!")
     elif has_boost:
@@ -232,7 +243,8 @@ func _physics_process(delta):
             target_reticle_position = null
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
-    if target_reticle_position != null and position.distance_to(target.position) >= 5:
+    # note: max range is handled by the ray length
+    if target_reticle_position != null and position.distance_to(target.position) >= 5 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
         weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
     targeting_ray.look_at(weapons_target)
     targeting_ray.force_raycast_update()
@@ -273,3 +285,8 @@ func shoot():
     bullet.add_collision_exception_with(self)
     bullet.aim(weapons_target)
     laser_timer.start(0.05)
+
+func handle_bullet():
+    health -= 1
+    if health <= 0:
+        visible = false

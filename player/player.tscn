@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://g8nl5yla04y7"]
+[gd_scene load_steps=6 format=3 uid="uid://g8nl5yla04y7"]
 
 [ext_resource type="Script" path="res://player/player.gd" id="1_j1hqe"]
 [ext_resource type="ArrayMesh" uid="uid://da7ha2ixjvxmk" path="res://obj_mtl/ship3.obj" id="1_jvcg1"]
@@ -8,6 +8,9 @@ size = Vector3(0.7, 0.25, 1.8)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_piifi"]
 size = Vector3(2.4, 0.1, 0.5)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_juui0"]
+radius = 1.0
 
 [node name="player" type="CharacterBody3D"]
 script = ExtResource("1_j1hqe")
@@ -43,6 +46,10 @@ shape = SubResource("BoxShape3D_luhjr")
 [node name="wing collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.25)
 shape = SubResource("BoxShape3D_piifi")
+
+[node name="avoidance_sphere" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_juui0")
+disabled = true
 
 [node name="boost_timer" type="Timer" parent="."]
 
