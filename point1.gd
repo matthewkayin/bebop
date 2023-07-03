@@ -24,6 +24,6 @@ func _process(delta):
         target_pos = null
         velocity = Vector3.ZERO
     else:
-        velocity = position.direction_to(target_pos) * 7
+        velocity = position.direction_to(target_pos) * 3
 
     position += velocity * delta

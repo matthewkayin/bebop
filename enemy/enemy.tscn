@@ -19,9 +19,6 @@ script = ExtResource("1_c4ye0")
 mesh = ExtResource("2_6iajo")
 surface_material_override/0 = SubResource("StandardMaterial3D_3fc03")
 
-[node name="avoidance_ray" type="RayCast3D" parent="mesh"]
-target_position = Vector3(0, 0, -25)
-
 [node name="laser_mount" type="Node3D" parent="mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.316905)
 

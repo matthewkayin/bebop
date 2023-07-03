@@ -1,22 +1,25 @@
-[gd_scene load_steps=8 format=3 uid="uid://b5fbspwvjasbr"]
+[gd_scene load_steps=9 format=3 uid="uid://b5fbspwvjasbr"]
 
 [ext_resource type="PackedScene" uid="uid://c7vpudmpp13vy" path="res://enemy/enemy.tscn" id="2_k1gxm"]
 [ext_resource type="Script" path="res://point1.gd" id="3_sed3v"]
-[ext_resource type="Script" path="res://asteroid.gd" id="3_ytseg"]
+[ext_resource type="Script" path="res://static_obstacle.gd" id="3_xw2in"]
 [ext_resource type="ArrayMesh" uid="uid://bk2xvj7a4qi7b" path="res://Asteroids/asteriod5.obj" id="4_etcsc"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_ggdin"]
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_adiyd"]
+albedo_color = Color(1, 1, 0, 1)
+
 [sub_resource type="SphereShape3D" id="SphereShape3D_cjrl6"]
 
-[sub_resource type="SphereShape3D" id="SphereShape3D_gmtlp"]
+[sub_resource type="SphereShape3D" id="SphereShape3D_ch6my"]
 radius = 6.107
 
 [node name="enemy_testing" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4.01299)
 
 [node name="enemy" parent="." instance=ExtResource("2_k1gxm")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.3394)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.8964, 0, 8.03627)
 
 [node name="point1" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -4)
@@ -25,6 +28,7 @@ script = ExtResource("3_sed3v")
 [node name="mesh" type="MeshInstance3D" parent="point1"]
 mesh = SubResource("SphereMesh_ggdin")
 skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_adiyd")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="point1"]
 shape = SubResource("SphereShape3D_cjrl6")
@@ -40,8 +44,8 @@ mesh = SubResource("SphereMesh_ggdin")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.22497, -0.554974)
 
 [node name="asteroid" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.7915, 0, -11.865)
-script = ExtResource("3_ytseg")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.8106, 0, -6.49804)
+script = ExtResource("3_xw2in")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid"]
 transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
@@ -50,4 +54,4 @@ skeleton = NodePath("../..")
 
 [node name="collider" type="CollisionShape3D" parent="asteroid"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
-shape = SubResource("SphereShape3D_gmtlp")
+shape = SubResource("SphereShape3D_ch6my")

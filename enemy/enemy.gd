@@ -6,8 +6,6 @@ extends CharacterBody3D
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
-@onready var camera_anchor = $camera_anchor
-@onready var avoidance_ray = $mesh/avoidance_ray
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
@@ -33,7 +31,6 @@ var target = null
 var number = 0
 
 func _ready():
-    avoidance_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
 
 func pathfind():
@@ -45,14 +42,22 @@ func pathfind():
         return
 
     var direction = position.direction_to(target.position)
+    var collision_eminent = false
     for obstacle in get_tree().get_nodes_in_group("obstacles"):
         if obstacle == self:
             continue
+        var relative_velocity = velocity - obstacle.velocity
+        var obstacle_direction = position.direction_to(obstacle.position)
+        relative_velocity = (obstacle_direction * relative_velocity.dot(obstacle_direction) / obstacle_direction.length())
+        var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ACCELERATION.x) + obstacle.collision_radius
         var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
-        if collision_distance <= 15:
-            var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(direction))
-            var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / 15)) * 0.5)
-            var avoidance = -direction * avoidance_strength * 2
+        if collision_distance <= stop_distance:
+            var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(obstacle.position)))
+            var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
+            if collision_distance / stop_distance >= 0.75:
+                collision_eminent = true
+            var avoidance = -position.direction_to(obstacle.position) * avoidance_strength * 2
+            print(obstacle.name, " / ", avoidance_strength, " / ", collision_angle)
             direction += avoidance
     direction = direction.normalized()
 
@@ -86,7 +91,7 @@ func pathfind():
         else:
             throttle = 1
 
-        if position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf:
+        if collision_eminent or (position.distance_to(target.position) <= desired_follow_distance and velocity.length() > desired_vf):
             thrust_input.z = 1
 
 func _physics_process(delta):
@@ -115,7 +120,6 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
-    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * 1.5)
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
