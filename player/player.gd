@@ -21,7 +21,6 @@ extends CharacterBody3D
 @export var max_pitch_speed = 0.6
 @export var max_yaw_speed = 0.2
 var MAX_ROTATION_SPEED = Vector3(max_roll_speed, max_pitch_speed, max_yaw_speed)
-var DRIFT_ROTATION_SPEED = Vector3(2.8, 1.2, 0.6)
 @export var ACCELERATION = 2.5
 @export var DECCELERATION = 2.5
 @export var boost_impulse_strength = 30
@@ -38,7 +37,6 @@ enum YawRoll {
 @export var rotation_type: YawRoll = YawRoll.OFF
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
-var drift_boost_rotation = 0
 
 var throttle = 0
 
@@ -102,18 +100,8 @@ func _physics_process(delta):
 
     if Input.is_action_just_pressed("boost") and has_boost:
         boost()
-    if Input.is_action_just_pressed("flight_assist") and drifting:
-        drifting = false
-        var drift_degrees = rad_to_deg(drift_boost_rotation)
-        print("DEGREES! ", drift_degrees)
-        var boost_percent = min(abs(drift_degrees) / 360, 1.0)
-        boost(boost_percent)
-    if Input.is_action_just_released("flight_assist") and not drifting: 
-        if rotation_input != Vector3.ZERO:
-            for i in range(0, 3):
-                rotation_speed[i] = rotation_input[i] * DRIFT_ROTATION_SPEED[i]
-            drifting = true
-            drift_boost_rotation = 0
+    if Input.is_action_just_pressed("flight_assist"):
+        drifting = not drifting
     if Input.is_action_pressed("shoot"):
         if laser_timer.is_stopped():
             shoot()
@@ -161,13 +149,12 @@ func _physics_process(delta):
     elif rotation_type == YawRoll.ON_LOW_ROLL and abs(rotation_input.x) > 0.3:
         yaw += rotation_input.x
 
-    if not drifting and not Input.is_action_pressed("flight_assist"):
-        rotation_speed += Vector3(roll, rotation_input.y, yaw)
-        var speed_percent = 1 - abs((velocity.length() / TERMINAL_VELOCITY) - 0.45)
-        if boost_impulse != Vector3.ZERO or drifting:
-            speed_percent = 1
-        for i in range(0, 3):
-            rotation_speed[i] = clamp(rotation_speed[i], -MAX_ROTATION_SPEED[i] * speed_percent, MAX_ROTATION_SPEED[i] * speed_percent)
+    rotation_speed += Vector3(roll, rotation_input.y, yaw)
+    var speed_percent = 1 - abs((velocity.length() / TERMINAL_VELOCITY) - 0.45)
+    if boost_impulse != Vector3.ZERO or drifting:
+        speed_percent = 1
+    for i in range(0, 3):
+        rotation_speed[i] = clamp(rotation_speed[i], -MAX_ROTATION_SPEED[i] * speed_percent, MAX_ROTATION_SPEED[i] * speed_percent)
 
     # Perform flight rotation
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
@@ -175,8 +162,6 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
     camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * 1.5)
-    if drifting:
-        drift_boost_rotation += rotation_speed.length() * delta
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
@@ -240,7 +225,6 @@ func _physics_process(delta):
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
-        drifting = false
         collision_impulse = collision.get_normal() * velocity.length() * collision_impulse_modifier
         rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
         rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
@@ -269,19 +253,16 @@ func _physics_process(delta):
     
     crosshair_position = camera.unproject_position(weapons_target)
 
-func boost(boost_percent = 1):
+func boost():
     has_boost = false
-    if boost_percent == 1:
-        var tween = get_tree().create_tween()
-        tween.tween_property(self, "velocity", -mesh.transform.basis.z * velocity.length(), 0.3 * boost_percent)
-        await tween.finished
-        var camera_tween = get_tree().create_tween()
-        camera_tween.tween_property(camera, "fov", 75 + (45 * boost_percent), 0.2 * boost_percent)
-        await camera_tween.finished
-    else:
-        velocity = -mesh.transform.basis.z * velocity.length()
-    boost_impulse = -mesh.transform.basis.z * boost_impulse_strength * boost_percent
-    boost_timer.start(boost_impulse_duration * boost_percent)
+    var tween = get_tree().create_tween()
+    tween.tween_property(self, "velocity", -mesh.transform.basis.z * velocity.length(), 0.3)
+    await tween.finished
+    var camera_tween = get_tree().create_tween()
+    camera_tween.tween_property(camera, "fov", 115, 0.2)
+    await camera_tween.finished
+    boost_impulse = -mesh.transform.basis.z * boost_impulse_strength
+    boost_timer.start(boost_impulse_duration)
     await boost_timer.timeout
     boost_impulse = Vector3.ZERO
     boost_timer.start(10)
