@@ -49,6 +49,7 @@ var weapon_alternator = 0
 var target = null
 var crosshair_position = Vector2.ZERO
 var target_reticle_position = null
+var target_follow_angle
 
 var collision_radius = 0
 
@@ -158,7 +159,6 @@ func _physics_process(delta):
             rotation_speed[i] = max(rotation_speed[i] + rotation_acceleration[i], speed_percent * -MAX_ROTATION_SPEED[i])
 
     # Perform flight rotation
-    print(rotation_speed)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
@@ -239,10 +239,21 @@ func _physics_process(delta):
 
     # set weapons target
     target_reticle_position = null
-    if target != null and not camera.is_position_behind(target.position):
-        target_reticle_position = camera.unproject_position(target.position)
-        if not get_viewport().get_visible_rect().has_point(target_reticle_position):
-            target_reticle_position = null
+    target_follow_angle = null
+    if target != null: 
+        if not camera.is_position_behind(target.position):
+            target_reticle_position = camera.unproject_position(target.position)
+            if not get_viewport().get_visible_rect().has_point(target_reticle_position):
+                target_reticle_position = null
+        if target_reticle_position == null:
+            var direction_xbasis = helpers.vector_component_in_vector_direction(position.direction_to(target.position), mesh.transform.basis.x)
+            var direction_ybasis = helpers.vector_component_in_vector_direction(position.direction_to(target.position), mesh.transform.basis.y)
+            var screen_direction = Vector2(direction_xbasis.length(), direction_ybasis.length())
+            if direction_xbasis.normalized().is_equal_approx(-mesh.transform.basis.x):
+                screen_direction.x *= -1
+            if direction_ybasis.normalized().is_equal_approx(-mesh.transform.basis.y):
+                screen_direction.y *= -1
+            target_follow_angle = rad_to_deg(screen_direction.angle())
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
     # note: max range is handled by the ray length

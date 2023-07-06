@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://djedhq6bu54k5"]
+[gd_scene load_steps=7 format=3 uid="uid://djedhq6bu54k5"]
 
 [ext_resource type="ArrayMesh" uid="uid://bk2xvj7a4qi7b" path="res://Asteroids/asteriod5.obj" id="1_gj8tp"]
 [ext_resource type="PackedScene" uid="uid://df4xxm47v5pld" path="res://ui/ui.tscn" id="2_1m3i6"]
+[ext_resource type="PackedScene" uid="uid://c7vpudmpp13vy" path="res://enemy/enemy.tscn" id="2_c2cxq"]
 [ext_resource type="Script" path="res://static_obstacle.gd" id="3_vc7jk"]
 [ext_resource type="PackedScene" uid="uid://g8nl5yla04y7" path="res://player/player.tscn" id="4_aypf1"]
 
@@ -13,7 +14,7 @@ radius = 6.107
 [node name="player" parent="." instance=ExtResource("4_aypf1")]
 
 [node name="asteroid" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.865)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.8266, 0, -23.4724)
 script = ExtResource("3_vc7jk")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid"]
@@ -55,3 +56,6 @@ shape = SubResource("SphereShape3D_afxhx")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.0639, 0)
 
 [node name="ui" parent="." instance=ExtResource("2_1m3i6")]
+
+[node name="enemy" parent="." instance=ExtResource("2_c2cxq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4463, 3.39966, -37.5742)

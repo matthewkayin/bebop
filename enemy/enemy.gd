@@ -184,7 +184,8 @@ func _physics_process(delta):
     # shoot target
     if weapons_target != null:
         if laser_timer.is_stopped():
-            shoot()
+            pass
+            # shoot()
 
 func boost():
     has_boost = false
