@@ -43,7 +43,7 @@ var throttle = 0
 var has_boost = true
 var boost_impulse = Vector3.ZERO
 var collision_impulse = Vector3.ZERO
-var drifting = true
+var drifting = false
 
 var weapons_target
 var weapon_alternator = 0
@@ -98,6 +98,8 @@ func _physics_process(delta):
             Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
             rotation_input = Vector3.ZERO
 
+    if Input.is_action_just_pressed("boost") and has_boost:
+        boost()
     if Input.is_action_just_pressed("flight_assist"):
         drifting = not drifting
     if Input.is_action_pressed("shoot"):
@@ -162,11 +164,10 @@ func _physics_process(delta):
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
-    if Input.is_action_pressed("thrust_mod"):
-        thrust_input.y = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-    else:
-        thrust_input.z = -(Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards"))
+    thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
+    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+    throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     debug_display.append("HEALTH: " + str(health))
     if target != null:
@@ -191,13 +192,9 @@ func _physics_process(delta):
                     acceleration += -mesh.transform.basis[i] * ACCELERATION
             elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ACCELERATION * delta: 
                 decceleration += -velocity_component_in_basis_direction.normalized() * DECCELERATION
-    if Input.is_action_just_pressed("boost"):
-        print("hey")
-        velocity = acceleration.normalized() * 4
-    elif boost_impulse != Vector3.ZERO:
+    if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
     else:
-        print(acceleration)
         velocity += (acceleration + decceleration + collision_impulse) * delta
 
     # debug display
