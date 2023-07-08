@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://g8nl5yla04y7"]
 
 [ext_resource type="Script" path="res://player/player.gd" id="1_j1hqe"]
-[ext_resource type="ArrayMesh" uid="uid://o6unjyy4s4rd" path="res://ship(1).obj" id="2_862qh"]
+[ext_resource type="ArrayMesh" uid="uid://gejmb40nbd10" path="res://ship_test.obj" id="2_fbyei"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_luhjr"]
 size = Vector3(0.7, 0.25, 1.8)
@@ -16,7 +16,7 @@ radius = 1.0
 script = ExtResource("1_j1hqe")
 
 [node name="mesh" type="MeshInstance3D" parent="."]
-mesh = ExtResource("2_862qh")
+mesh = ExtResource("2_fbyei")
 
 [node name="laser_mount" type="Node3D" parent="mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.316905)

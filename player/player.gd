@@ -17,9 +17,9 @@ extends CharacterBody3D
 
 @export var TERMINAL_VELOCITY = 10
 @export var MAX_THROTTLE_VELOCITY = 7
-@export var max_roll_speed = 1.4
+@export var max_roll_speed = 1.0
 @export var max_pitch_speed = 0.6
-@export var max_yaw_speed = 0.2
+@export var max_yaw_speed = 0.6
 var MAX_ROTATION_SPEED = Vector3(max_roll_speed, max_pitch_speed, max_yaw_speed)
 @export var ACCELERATION = 2.5
 @export var DECCELERATION = 1.75
@@ -167,16 +167,15 @@ func _physics_process(delta):
     var camera_follow_speed_percent = 1
     if rotation_speed.length() > MAX_ROTATION_SPEED.length():
         camera_follow_speed_percent = 1 - min((rotation_speed.length() - MAX_ROTATION_SPEED.length()) / MAX_ROTATION_SPEED.length(), 1)
-    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * 1.5 * camera_follow_speed_percent)
+    var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
     var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-    if Input.is_action_pressed("thrust_mod"):
-        thrust_input.y = z_input
-        thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    else:
-        throttle = clamp(throttle + (z_input * 0.01), 0, 1)
+    thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
+    thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
+    throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     debug_display.append("HEALTH: " + str(health))
     if target != null:
