@@ -185,9 +185,8 @@ func _physics_process(delta):
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
     var decceleration = Vector3.ZERO
-    if not drifting:
-        for i in range(0, 3):
-            acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION
+    for i in range(0, 3):
+        acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION
 
         for i in range(0, 3):
             var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
