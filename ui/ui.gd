@@ -1,6 +1,8 @@
 extends Control
 
-@onready var velocity_label = $velocity_label
+@onready var health_label = $health_label
+@onready var target_label = $target_label
+@onready var throttle_label = $throttle_label
 @onready var crosshair = $crosshair
 @onready var crosshair_arrow = $crosshair/crosshair_arrow
 @onready var target = $target
@@ -60,10 +62,44 @@ func _process(_delta):
                 point.x *= -1
         target_follow_arrow.position = screen_center + (point.normalized() * (point.length() - 11))
 
-    velocity_label.text = ""
-    while player.debug_display.size() != 0:
-        velocity_label.text += player.debug_display[0] + "\n"
-        player.debug_display.pop_front()
+    # velocity_label.text = ""
+    # while player.debug_display.size() != 0:
+        # velocity_label.text += player.debug_display[0] + "\n"
+        # player.debug_display.pop_front()
+
+    throttle_label.text = ""
+    if player.drifting:
+        throttle_label.text += "Drifting"
+    throttle_label.text += "\n"
+    if player.boost_impulse != Vector3.ZERO:
+        throttle_label.text += "Boosting!\n"
+    elif not player.boost_timer.is_stopped():
+        throttle_label.text += "Charging...\n"
+    else:
+        throttle_label.text += "Boost Ready\n"
+    throttle_label.text += "Throttle: "
+    throttle_label.text += str(int(player.throttle * 100))
+
+    health_label.text = "Hull: " + str(player.hull) + "\n"
+    if not player.shields_online:
+        if not player.shield_timer.is_stopped():
+            health_label.text += "Shields Offline!"
+        else:
+            health_label.text += "Recharging: " + str(int((player.shields / player.ship.SHIELD_STRENGTH) * 100)) + "%"
+    else:
+        health_label.text += "Shields: " + str(int((player.shields / player.ship.SHIELD_STRENGTH) * 100)) + "%"
+
+    if player.target == null:
+        target_label.text = ""
+    else:
+        target_label.text = "Hull: " + str(player.target.hull) + "\n"
+        if not player.target.shields_online:
+            if not player.target.shield_timer.is_stopped():
+                target_label.text += "Shields Offline!"
+            else:
+                target_label.text += "Recharging: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
+        else:
+            target_label.text += "Shields: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
 
     crosshair.position = player.crosshair_position
     if player.target_reticle_position != null:

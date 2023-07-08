@@ -12,12 +12,33 @@ offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("1_6puy2")
 
-[node name="velocity_label" type="Label" parent="."]
+[node name="health_label" type="Label" parent="."]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
 scale = Vector2(0.6, 0.6)
 text = "Velocity: <0, 0, 0>"
+
+[node name="target_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 568.0
+offset_right = 684.0
+offset_bottom = 52.0
+scale = Vector2(0.6, 0.6)
+text = "Hull: 100
+Shields Offline!"
+horizontal_alignment = 2
+
+[node name="throttle_label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 518.0
+offset_top = 281.0
+offset_right = 640.0
+offset_bottom = 359.0
+text = "Charging...
+     Throttle: 100"
+horizontal_alignment = 2
+vertical_alignment = 2
 
 [node name="crosshair" type="Sprite2D" parent="."]
 position = Vector2(320, 180)

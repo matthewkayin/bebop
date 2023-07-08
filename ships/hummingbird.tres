@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ShipStats" load_steps=2 format=3 uid="uid://bv35xou5sucl"]
+
+[ext_resource type="Script" path="res://ships/ship_stats.gd" id="1_ra0yj"]
+
+[resource]
+script = ExtResource("1_ra0yj")
+TERMINAL_VELOCITY = 10
+MAX_THROTTLE_VELOCITY = 7
+MAX_ROTATION_SPEED = Vector3(1, 0.6, 0.4)
+ACCELERATION = 2.5
+DECELERATION = 1.75
+ROTATION_DECELERATION = 0.02
+HULL_STRENGTH = 100
+SHIELD_STRENGTH = 200
+SHIELD_RECHARGE_RATE = 1

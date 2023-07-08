@@ -52,9 +52,13 @@ shape = SubResource("SphereShape3D_juui0")
 disabled = true
 
 [node name="boost_timer" type="Timer" parent="."]
+one_shot = true
 
 [node name="yaw_roll_timer" type="Timer" parent="."]
 one_shot = true
 
 [node name="laser_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="shield_timer" type="Timer" parent="."]
 one_shot = true

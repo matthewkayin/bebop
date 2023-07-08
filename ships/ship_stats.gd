@@ -1,0 +1,18 @@
+extends Resource
+class_name ShipStats
+
+const COLLISION_ROTATION_MODIFIER = 0.6
+const COLLISION_IMPULSE_MODIFIER = 100
+const BOOST_IMPULSE_DURATION = 1
+const BOOST_IMPULSE_STRENGTH = 30
+
+@export var TERMINAL_VELOCITY = 10
+@export var MAX_THROTTLE_VELOCITY = 7
+@export var MAX_ROTATION_SPEED = Vector3(1.0, 0.6, 0.4)
+@export var ACCELERATION = 2.5
+@export var DECELERATION = 1.75
+@export var ROTATION_DECELERATION = 0.02
+
+@export var HULL_STRENGTH = 100
+@export var SHIELD_STRENGTH = 200
+@export var SHIELD_RECHARGE_RATE = 1

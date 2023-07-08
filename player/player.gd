@@ -2,6 +2,8 @@ extends CharacterBody3D
 
 @onready var helpers = get_node("/root/Helpers")
 
+@onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
+
 @onready var mesh = $mesh
 @onready var camera_anchor = $camera_anchor
 @onready var boost_timer = $boost_timer
@@ -12,21 +14,9 @@ extends CharacterBody3D
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
+@onready var shield_timer = $shield_timer
 
-@onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
-
-@export var TERMINAL_VELOCITY = 10
-@export var MAX_THROTTLE_VELOCITY = 7
-@export var max_roll_speed = 1.0
-@export var max_pitch_speed = 0.6
-@export var max_yaw_speed = 0.6
-var MAX_ROTATION_SPEED = Vector3(max_roll_speed, max_pitch_speed, max_yaw_speed)
-@export var ACCELERATION = 2.5
-@export var DECCELERATION = 1.75
-@export var boost_impulse_strength = 30
-@export var boost_impulse_duration = 1
-@export var collision_impulse_modifier = 100
-@export var collision_rotation_modifier = 0.6
+@onready var ship = preload("res://ships/hummingbird.tres")
 
 enum YawRoll {
     OFF,
@@ -34,7 +24,7 @@ enum YawRoll {
     ON_LOW_ROLL
 }
 
-@export var rotation_type: YawRoll = YawRoll.OFF
+var rotation_type: YawRoll = YawRoll.OFF
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
 
@@ -53,16 +43,20 @@ var target_follow_angle
 
 var collision_radius = 0
 
-var health = 100
-
-var debug_display = []
+var shields_online = true
+var hull = 0
+var shields = 0
 
 func _ready():
     add_to_group("obstacles")
+
     collision_radius = $avoidance_sphere.shape.radius
     targeting_ray.add_exception(self)
     target_selection_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
+
+    hull = ship.HULL_STRENGTH
+    shields = ship.SHIELD_STRENGTH
 
 func _input(event):
     if event is InputEventMouseButton:
@@ -149,14 +143,14 @@ func _physics_process(delta):
         yaw += rotation_input.x
 
     var rotation_acceleration = Vector3(roll, rotation_input.y, yaw)
-    var speed_percent = 1 - abs((velocity.length() / TERMINAL_VELOCITY) - 0.45)
+    var speed_percent = 1 - abs((velocity.length() / ship.TERMINAL_VELOCITY) - 0.45)
     if boost_impulse != Vector3.ZERO or drifting:
         speed_percent = 1
     for i in range(0, 3):
-        if rotation_acceleration[i] > 0 and rotation_speed[i] < speed_percent * MAX_ROTATION_SPEED[i]:
-            rotation_speed[i] = min(rotation_speed[i] + rotation_acceleration[i], speed_percent * MAX_ROTATION_SPEED[i])
-        elif rotation_acceleration[i] < 0 and rotation_speed[i] > speed_percent * -MAX_ROTATION_SPEED[i]:
-            rotation_speed[i] = max(rotation_speed[i] + rotation_acceleration[i], speed_percent * -MAX_ROTATION_SPEED[i])
+        if rotation_acceleration[i] > 0 and rotation_speed[i] < speed_percent * ship.MAX_ROTATION_SPEED[i]:
+            rotation_speed[i] = min(rotation_speed[i] + rotation_acceleration[i], speed_percent * ship.MAX_ROTATION_SPEED[i])
+        elif rotation_acceleration[i] < 0 and rotation_speed[i] > speed_percent * -ship.MAX_ROTATION_SPEED[i]:
+            rotation_speed[i] = max(rotation_speed[i] + rotation_acceleration[i], speed_percent * -ship.MAX_ROTATION_SPEED[i])
 
     # Perform flight rotation
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
@@ -165,75 +159,62 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
 
     var camera_follow_speed_percent = 1
-    if rotation_speed.length() > MAX_ROTATION_SPEED.length():
-        camera_follow_speed_percent = 1 - min((rotation_speed.length() - MAX_ROTATION_SPEED.length()) / MAX_ROTATION_SPEED.length(), 1)
+    if rotation_speed.length() > ship.MAX_ROTATION_SPEED.length():
+        camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
     var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
     camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
-    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
     thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    throttle = clamp(throttle + (z_input * 0.01), 0, 1)
-
-    debug_display.append("HEALTH: " + str(health))
-    if target != null:
-        debug_display.append("ENEMY_HEALTH: " + str(target.health))
-    debug_display.append("Throttle: " + str(snapped(throttle, 0.01)))
+    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+    if drifting:
+        thrust_input.z = -z_input
+    else:
+        throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
     var decceleration = Vector3.ZERO
     for i in range(0, 3):
-        acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION
+        acceleration += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION
 
+    if not drifting:
         for i in range(0, 3):
             var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION
-                elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (MAX_THROTTLE_VELOCITY * throttle) + 5:
-                    decceleration += mesh.transform.basis[i] * DECCELERATION
-                elif velocity_component_in_basis_direction.length() < MAX_THROTTLE_VELOCITY * throttle:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION
-            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ACCELERATION * delta: 
-               decceleration += -velocity_component_in_basis_direction.normalized() * DECCELERATION
+                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
+                elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (ship.MAX_THROTTLE_VELOCITY * throttle) + 5:
+                    decceleration += mesh.transform.basis[i] * ship.DECELERATION
+                elif velocity_component_in_basis_direction.length() < ship.MAX_THROTTLE_VELOCITY * throttle:
+                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
+            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ship.ACCELERATION * delta: 
+                decceleration += -velocity_component_in_basis_direction.normalized() * ship.DECELERATION
+
     if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
     else:
         velocity += (acceleration + decceleration) * delta
 
-    # debug display
-    debug_display.append("Velocity: " + str(snapped(velocity.length(), 0.1)))
-    if boost_impulse != Vector3.ZERO:
-        debug_display.append("BOOST!")
-    elif has_boost:
-        debug_display.append("ready")
-    else:
-        debug_display.append("charging...")
-    if drifting:
-        debug_display.append("DRIFT")
-    else:
-        debug_display.append("no drift")
-
     # velocity
-    velocity = velocity.limit_length(TERMINAL_VELOCITY)
+    velocity = velocity.limit_length(ship.TERMINAL_VELOCITY)
     if thrust_input == Vector3.ZERO and (throttle == 0 and not drifting) and velocity.length() <= 0.1:
         velocity = Vector3.ZERO
 
     # move and handle collisions
     var collision = move_and_collide(velocity * delta)
     if collision:
-        velocity += collision.get_normal() * velocity.length() * collision_impulse_modifier * delta
+        velocity += collision.get_normal() * velocity.length() * ship.COLLISION_IMPULSE_MODIFIER * delta
         rotation_speed.x = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.x)
         rotation_speed.y = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.z) 
         rotation_speed.z = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.y) 
-        rotation_speed *= velocity.length() * collision_rotation_modifier 
+        rotation_speed *= velocity.length() * ship.COLLISION_ROTATION_MODIFIER
 
     # set camera fov
     if boost_impulse == Vector3.ZERO:
-        camera.fov = lerp(camera.fov, 75 + (32 * (velocity.length() / TERMINAL_VELOCITY)), delta)
+        camera.fov = lerp(camera.fov, 75 + (32 * (velocity.length() / ship.TERMINAL_VELOCITY)), delta)
 
     # set weapons target
     target_reticle_position = null
@@ -264,6 +245,12 @@ func _physics_process(delta):
     
     crosshair_position = camera.unproject_position(weapons_target)
 
+    # update shields
+    if shield_timer.is_stopped():
+        shields = min(ship.SHIELD_STRENGTH, shields + (ship.SHIELD_RECHARGE_RATE * delta))
+        if not shields_online and shields >= int(ship.SHIELD_STRENGTH / 2.0):
+            shields_online = true
+
 func boost():
     has_boost = false
     var tween = get_tree().create_tween()
@@ -272,8 +259,8 @@ func boost():
     var camera_tween = get_tree().create_tween()
     camera_tween.tween_property(camera, "fov", 115, 0.2)
     await camera_tween.finished
-    boost_impulse = -mesh.transform.basis.z * boost_impulse_strength
-    boost_timer.start(boost_impulse_duration)
+    boost_impulse = -mesh.transform.basis.z * ship.BOOST_IMPULSE_STRENGTH
+    boost_timer.start(ship.BOOST_IMPULSE_DURATION)
     await boost_timer.timeout
     boost_impulse = Vector3.ZERO
     boost_timer.start(10)
@@ -298,6 +285,12 @@ func shoot():
     laser_timer.start(0.05)
 
 func handle_bullet():
-    health -= 1
-    if health <= 0:
+    if shields_online:
+        shields -= 1
+        if shields <= 0:
+            shields_online = false
+            shield_timer.start(5)
+    else:
+        hull -= 1
+    if hull <= 0:
         visible = false

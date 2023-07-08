@@ -8,13 +8,11 @@ extends CharacterBody3D
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
 @onready var targeting_ray = $mesh/targeting_ray
+@onready var shield_timer = $shield_timer
 
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
-const TERMINAL_VELOCITY = 10
-const MAX_THROTTLE_VELOCITY = 7
-const MAX_ROTATION_SPEED = Vector3(1.4, 0.8, 0.6)
-const ACCELERATION = Vector3(2.5, 2.5, 2.5)
+@onready var ship = preload("res://ships/hummingbird.tres")
 
 var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
@@ -34,13 +32,18 @@ var number = 0
 
 var collision_radius = 0
 
-var health = 100
+var shields_online = true
+var hull = 0
+var shields = 0
 
 func _ready():
     add_to_group("obstacles")
     add_to_group("targets")
     collision_radius = $avoidance_sphere.shape.radius
     targeting_ray.add_exception(self)
+
+    hull = ship.HULL_STRENGTH
+    shields = ship.SHIELD_STRENGTH
 
 func _physics_process(delta):
     if target == null:
@@ -62,7 +65,7 @@ func _physics_process(delta):
                 continue
             # calculate avoidance radius 
             var relative_velocity = helpers.vector_component_in_vector_direction(velocity - obstacle.velocity, position.direction_to(obstacle.position))
-            var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ACCELERATION.x) + obstacle.collision_radius
+            var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ship.ACCELERATION) + obstacle.collision_radius
             var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
             if collision_distance <= stop_distance:
                 # calculate and apply avoidance
@@ -100,10 +103,10 @@ func _physics_process(delta):
         else:
             var desired_vf = target.velocity.length()
             var desired_follow_distance = 15
-            var time_to_deccel = abs(desired_vf - velocity.length()) / ACCELERATION.x
-            var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ACCELERATION.x * (time_to_deccel * time_to_deccel))
+            var time_to_deccel = abs(desired_vf - velocity.length()) / ship.ACCELERATION
+            var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ship.ACCELERATION * (time_to_deccel * time_to_deccel))
             if distance_to_deccel <= 0:
-                throttle = desired_vf / MAX_THROTTLE_VELOCITY
+                throttle = desired_vf / ship.MAX_THROTTLE_VELOCITY
             else:
                 throttle = 1
 
@@ -119,11 +122,11 @@ func _physics_process(delta):
                 rotation_speed[i] += 0.02
 
     rotation_speed += rotation_input
-    var speed_percent = 1 - abs((velocity.length() / TERMINAL_VELOCITY) - 0.45)
+    var speed_percent = 1 - abs((velocity.length() / ship.TERMINAL_VELOCITY) - 0.45)
     if boost_impulse != Vector3.ZERO or drifting:
         speed_percent = 1
     for i in range(0, 3):
-        rotation_speed[i] = clamp(rotation_speed[i], -MAX_ROTATION_SPEED[i] * speed_percent, MAX_ROTATION_SPEED[i] * speed_percent)
+        rotation_speed[i] = clamp(rotation_speed[i], -ship.MAX_ROTATION_SPEED[i] * speed_percent, ship.MAX_ROTATION_SPEED[i] * speed_percent)
 
     # Perform flight rotation
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
@@ -134,7 +137,7 @@ func _physics_process(delta):
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
     for i in range(0, 3):
-        acceleration += mesh.transform.basis[i] * thrust_input[i] * ACCELERATION[i]
+        acceleration += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION
 
     var decceleration = Vector3.ZERO
     if not drifting:
@@ -142,20 +145,20 @@ func _physics_process(delta):
             var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             if not drifting and i == 2 and throttle != 0:
                 if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
-                elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (MAX_THROTTLE_VELOCITY * throttle) + 5:
-                    decceleration += mesh.transform.basis[i] * ACCELERATION[i]
-                elif velocity_component_in_basis_direction.length() < MAX_THROTTLE_VELOCITY * throttle:
-                    acceleration += -mesh.transform.basis[i] * ACCELERATION[i]
-            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ACCELERATION[i] * delta: 
-                decceleration += -velocity_component_in_basis_direction.normalized() * ACCELERATION[i]
+                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
+                elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (ship.MAX_THROTTLE_VELOCITY * throttle) + 5:
+                    decceleration += mesh.transform.basis[i] * ship.DECELERATION
+                elif velocity_component_in_basis_direction.length() < ship.MAX_THROTTLE_VELOCITY * throttle:
+                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
+            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ship.ACCELERATION * delta: 
+                decceleration += -velocity_component_in_basis_direction.normalized() * ship.ACCELERATION
     if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
     else:
         velocity += (acceleration + decceleration + collision_impulse) * delta
 
     # velocity
-    velocity = velocity.limit_length(TERMINAL_VELOCITY)
+    velocity = velocity.limit_length(ship.TERMINAL_VELOCITY)
     if thrust_input == Vector3.ZERO and (throttle == 0 and not drifting) and velocity.length() <= 0.1:
         velocity = Vector3.ZERO
 
@@ -163,11 +166,11 @@ func _physics_process(delta):
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
-        collision_impulse = collision.get_normal() * velocity.length() * 100
+        collision_impulse = collision.get_normal() * velocity.length() * ship.COLLISION_IMPULSE_MODIFIER * delta
         rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
         rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
         rotation_speed[2] = collision.get_normal().signed_angle_to(velocity, Vector3.RIGHT)
-        rotation_speed *= 5
+        rotation_speed *= velocity.length() * ship.COLLISION_ROTATION_MODIFIER
 
     # try to lock on to target
     weapons_target = null
@@ -184,16 +187,22 @@ func _physics_process(delta):
     # shoot target
     if weapons_target != null:
         if laser_timer.is_stopped():
-            pass
-            # shoot()
+            if target.shields_online:
+                shoot()
+
+    # update shields
+    if shield_timer.is_stopped():
+        shields = min(ship.SHIELD_STRENGTH, shields + (ship.SHIELD_RECHARGE_RATE * delta))
+        if not shields_online and shields >= int(ship.SHIELD_STRENGTH / 2.0):
+            shields_online = true
 
 func boost():
     has_boost = false
     var tween = get_tree().create_tween()
     tween.tween_property(self, "velocity", -mesh.transform.basis.z * velocity.length(), 0.3)
     await tween.finished
-    boost_impulse = -mesh.transform.basis.z * 30
-    boost_timer.start(1)
+    boost_impulse = -mesh.transform.basis.z * ship.BOOST_IMPULSE_STRENGTH
+    boost_timer.start(ship.BOOST_IMPULSE_DURATION)
     await boost_timer.timeout
     boost_impulse = Vector3.ZERO
     boost_timer.start(10)
@@ -214,6 +223,12 @@ func shoot():
     laser_timer.start(0.05)
 
 func handle_bullet():
-    health -= 1
-    if health <= 0:
+    if shields_online:
+        shields -= 1
+        if shields <= 0:
+            shields_online = false
+            shield_timer.start(5)
+    else:
+        hull -= 1
+    if hull <= 0:
         queue_free()
