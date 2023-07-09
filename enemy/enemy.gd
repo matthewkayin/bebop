@@ -56,7 +56,7 @@ func _physics_process(delta):
 
     if target != null:
         # set initial direction towards target
-        var direction = position.direction_to(target.position)
+        var direction = position.direction_to(target.position + (target.velocity * 2))
 
         # obstacle avoidance
         var collision_eminent = false
@@ -86,7 +86,7 @@ func _physics_process(delta):
                 rotation_input.x = -1
             elif direction_xbasis.normalized() == -mesh.transform.basis.x:
                 rotation_input.x = 1
-        elif direction_xbasis.length() > 0.1:
+        if direction_xbasis.length() <= 0.3 and direction_xbasis.length() > 0.05:
             if direction_xbasis.normalized() == mesh.transform.basis.x:
                 rotation_input.z = -1
             elif direction_xbasis.normalized() == -mesh.transform.basis.x:
@@ -96,6 +96,8 @@ func _physics_process(delta):
                 rotation_input.y = 1
             elif direction_ybasis.normalized() == -mesh.transform.basis.y:
                 rotation_input.y = -1
+        if direction_xbasis.length() < 0.3 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) > 45 and position.distance_to(target.position) <= 15:
+            thrust_input.y = -rotation_input.y
 
         # determine throttle and thrust inputs
         if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
@@ -103,9 +105,11 @@ func _physics_process(delta):
         else:
             var desired_vf = target.velocity.length()
             var desired_follow_distance = 15
-            var time_to_deccel = abs(desired_vf - velocity.length()) / ship.ACCELERATION
-            var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ship.ACCELERATION * (time_to_deccel * time_to_deccel))
-            if distance_to_deccel <= 0:
+            # var time_to_deccel = abs(desired_vf - velocity.length()) / ship.ACCELERATION
+            # var distance_to_deccel = position.distance_to(target.position) - desired_follow_distance - (velocity.length() * time_to_deccel) - (0.5 * ship.ACCELERATION * (time_to_deccel * time_to_deccel))
+            # if distance_to_deccel <= 0:
+                # throttle = desired_vf / ship.MAX_THROTTLE_VELOCITY
+            if position.distance_to(target.position) <= desired_follow_distance:
                 throttle = desired_vf / ship.MAX_THROTTLE_VELOCITY
             else:
                 throttle = 1
@@ -133,6 +137,7 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
+    $camera_anchor.transform = mesh.transform
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
@@ -175,20 +180,17 @@ func _physics_process(delta):
     # try to lock on to target
     weapons_target = null
     # note: max range is handled by the ray length
-    if target != null and position.distance_to(target.position) >= 5 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
+    if target != null and position.distance_to(target.position) >= 5 and position.distance_to(target.position) <= 25 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
         weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
         targeting_ray.look_at(weapons_target)
         targeting_ray.force_raycast_update()
         if targeting_ray.is_colliding():
             weapons_target = targeting_ray.get_collision_point()
-        else:
-            weapons_target = null
 
     # shoot target
     if weapons_target != null:
         if laser_timer.is_stopped():
-            if not target.shields_online:
-                shoot()
+            shoot()
 
     # update shields
     if shield_timer.is_stopped():

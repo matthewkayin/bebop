@@ -117,26 +117,3 @@ shoot={
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":5,"axis_value":1.0,"script":null)
 ]
 }
-yaw_roll={
-"deadzone": 0.5,
-"events": []
-}
-thrust_mod={
-"deadzone": 0.5,
-"events": []
-}
-camera={
-"deadzone": 0.5,
-"events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":1,"pressure":0.0,"pressed":true,"script":null)
-]
-}
-camera_right={
-"deadzone": 0.5,
-"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":1.0,"script":null)
-]
-}
-camera_left={
-"deadzone": 0.5,
-"events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":-1.0,"script":null)
-]
-}

@@ -24,10 +24,9 @@ enum YawRoll {
     ON_LOW_ROLL
 }
 
-var rotation_type: YawRoll = YawRoll.OFF
+var rotation_type: YawRoll = YawRoll.ON_LOW_ROLL
 var rotation_input = Vector3.ZERO
 var rotation_speed = Vector3.ZERO
-var camera_rotation_offset = Vector2.ZERO
 
 var throttle = 0
 
@@ -77,11 +76,8 @@ func _input(event):
         rotation_input.x = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
         rotation_input.y = Input.get_action_strength("pitch_up") - Input.get_action_strength("pitch_down")
         rotation_input.z = Input.get_action_strength("yaw_left") - Input.get_action_strength("yaw_right")
-        if Input.is_action_pressed("yaw_roll"):
-            rotation_input.z = rotation_input.x
-            rotation_input.x = 0
 
-        if yaw_roll_timer.is_stopped() and prev_roll_input == 0 and rotation_input.x != 0:
+        if rotation_type == YawRoll.ON_INITIAL_ROLL and yaw_roll_timer.is_stopped() and prev_roll_input == 0 and rotation_input.x != 0:
             yaw_roll_timer.start(0.25)
 
 func _physics_process(delta):
@@ -164,22 +160,17 @@ func _physics_process(delta):
     if rotation_speed.length() > ship.MAX_ROTATION_SPEED.length():
         camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
     var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
-    var camera_desired_transform = mesh.transform
-    if Input.is_action_pressed("camera") and target != null: 
-        camera_desired_transform = Transform3D(Basis.looking_at(target.position - position, mesh.transform.basis.y), Vector3.ZERO)
-        camera_speed_mod *= 2
-    camera_anchor.transform = camera_anchor.transform.interpolate_with(camera_desired_transform, delta * camera_follow_speed_percent * camera_speed_mod)
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
     thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    if not Input.is_action_pressed("camera"):
-        var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-        if drifting:
-            thrust_input.z = -z_input
-        else:
-            throttle = clamp(throttle + (z_input * 0.01), 0, 1)
+    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+    if drifting:
+        thrust_input.z = -z_input
+    else:
+        throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
@@ -222,8 +213,6 @@ func _physics_process(delta):
     # set camera fov
     if boost_impulse == Vector3.ZERO:
         var desired_camera_fov = 75 + (32 * (velocity.length() / ship.TERMINAL_VELOCITY))
-        if Input.is_action_pressed("camera"):
-            desired_camera_fov += 5
         camera.fov = lerp(camera.fov, desired_camera_fov, delta)
 
     # set weapons target
@@ -246,7 +235,7 @@ func _physics_process(delta):
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
     # note: max range is handled by the ray length
-    if target_reticle_position != null and position.distance_to(target.position) >= 5 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
+    if target_reticle_position != null and position.distance_to(target.position) >= 5 and position.distance_to(target.position) <= 25 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
         weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
     targeting_ray.look_at(weapons_target)
     targeting_ray.force_raycast_update()
