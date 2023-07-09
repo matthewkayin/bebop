@@ -187,7 +187,7 @@ func _physics_process(delta):
     # shoot target
     if weapons_target != null:
         if laser_timer.is_stopped():
-            if target.shields_online:
+            if not target.shields_online:
                 shoot()
 
     # update shields

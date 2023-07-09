@@ -25,8 +25,9 @@ enum YawRoll {
 }
 
 var rotation_type: YawRoll = YawRoll.OFF
-var rotation_input = Vector3(0, 0, 0)
-var rotation_speed = Vector3(0, 0, 0)
+var rotation_input = Vector3.ZERO
+var rotation_speed = Vector3.ZERO
+var camera_rotation_offset = Vector2.ZERO
 
 var throttle = 0
 
@@ -158,21 +159,27 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
 
+    # camera rotation
     var camera_follow_speed_percent = 1
     if rotation_speed.length() > ship.MAX_ROTATION_SPEED.length():
         camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
     var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
-    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
+    var camera_desired_transform = mesh.transform
+    if Input.is_action_pressed("camera") and target != null: 
+        camera_desired_transform = Transform3D(Basis.looking_at(target.position - position, mesh.transform.basis.y), Vector3.ZERO)
+        camera_speed_mod *= 2
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(camera_desired_transform, delta * camera_follow_speed_percent * camera_speed_mod)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
     thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
-    if drifting:
-        thrust_input.z = -z_input
-    else:
-        throttle = clamp(throttle + (z_input * 0.01), 0, 1)
+    if not Input.is_action_pressed("camera"):
+        var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+        if drifting:
+            thrust_input.z = -z_input
+        else:
+            throttle = clamp(throttle + (z_input * 0.01), 0, 1)
 
     # acceleration and decceleration
     var acceleration = Vector3.ZERO
@@ -214,7 +221,10 @@ func _physics_process(delta):
 
     # set camera fov
     if boost_impulse == Vector3.ZERO:
-        camera.fov = lerp(camera.fov, 75 + (32 * (velocity.length() / ship.TERMINAL_VELOCITY)), delta)
+        var desired_camera_fov = 75 + (32 * (velocity.length() / ship.TERMINAL_VELOCITY))
+        if Input.is_action_pressed("camera"):
+            desired_camera_fov += 5
+        camera.fov = lerp(camera.fov, desired_camera_fov, delta)
 
     # set weapons target
     target_reticle_position = null
