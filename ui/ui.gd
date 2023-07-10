@@ -78,7 +78,8 @@ func _process(_delta):
     else:
         throttle_label.text += "Boost Ready\n"
     throttle_label.text += "Throttle: "
-    throttle_label.text += str(int(player.throttle * 100))
+    throttle_label.text += str(int(player.throttle * 100)) + "\n"
+    throttle_label.text += "S: " + str(snapped(player.velocity.length(), 0.1)) + " / " + str(snapped(player.helpers.vector_component_in_vector_direction(player.velocity, -player.mesh.transform.basis.z).length(), 0.1))
 
     health_label.text = "Hull: " + str(player.hull) + "\n"
     if not player.shields_online:

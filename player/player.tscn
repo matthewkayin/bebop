@@ -30,7 +30,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -25)
 [node name="camera_anchor" type="Node3D" parent="."]
 
 [node name="camera" type="Camera3D" parent="camera_anchor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 4)
 current = true
 
 [node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
