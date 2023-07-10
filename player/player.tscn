@@ -34,7 +34,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 4)
 current = true
 
 [node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
-target_position = Vector3(0, 0, -25)
+target_position = Vector3(0, 0, -100)
 
 [node name="target_selection_ray" type="RayCast3D" parent="camera_anchor/camera"]
 target_position = Vector3(0, 0, -100)
@@ -61,4 +61,7 @@ one_shot = true
 one_shot = true
 
 [node name="shield_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="weapon_lock_timer" type="Timer" parent="."]
 one_shot = true

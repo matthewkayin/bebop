@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3 uid="uid://cyg4cd5dk8khj"]
+
+[ext_resource type="Script" path="res://projectiles/arc_laser/arc_laser.gd" id="1_vvl3d"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_3si81"]
+top_radius = 0.2
+bottom_radius = 0.1
+height = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nhr2s"]
+transparency = 1
+albedo_color = Color(1, 1, 0.392157, 0.470588)
+emission_enabled = true
+emission = Color(1, 1, 0.392157, 1)
+emission_energy_multiplier = 10.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_o6nbv"]
+height = 1.0
+radius = 0.05
+
+[node name="laser" type="StaticBody3D"]
+collision_layer = 0
+script = ExtResource("1_vvl3d")
+
+[node name="beam" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("CylinderMesh_3si81")
+surface_material_override/0 = SubResource("StandardMaterial3D_nhr2s")
+
+[node name="collider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+shape = SubResource("CylinderShape3D_o6nbv")

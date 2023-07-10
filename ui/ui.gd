@@ -8,6 +8,10 @@ extends Control
 @onready var target = $target
 @onready var target_follow_arrow = $target_follow_arrow
 
+@onready var target_texture = load("res://ui/target.png")
+@onready var target_aquiring_texture = load("res://ui/target_aquiring.png")
+@onready var target_locked_texture = load("res://ui/target_locked.png")
+
 var player = null
 
 func _process(_delta):
@@ -103,11 +107,16 @@ func _process(_delta):
             target_label.text += "Shields: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
 
     crosshair.position = player.crosshair_position
+    target.visible = false
     if player.target_reticle_position != null:
         target.visible = true
         target.position = player.target_reticle_position
-    else:
-        target.visible = false
+        if player.weapon_has_lock:
+            target.texture = target_locked_texture
+        elif not player.weapon_lock_timer.is_stopped():
+            target.texture = target_aquiring_texture
+        else:
+            target.texture = target_texture
     if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
         crosshair_arrow.visible = player.rotation_input.length() > 0.01
         crosshair_arrow.position = Vector2(player.rotation_input.x, -player.rotation_input.y) * 128

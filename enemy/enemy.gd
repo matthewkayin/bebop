@@ -125,12 +125,14 @@ func _physics_process(delta):
             elif rotation_speed[i] < 0:
                 rotation_speed[i] += 0.02
 
-    rotation_speed += rotation_input
-    var speed_percent = 1 - abs((velocity.length() / ship.TERMINAL_VELOCITY) - 0.45)
+    var speed_percent = 1 - (abs((velocity.length() / ship.TERMINAL_VELOCITY) - 0.45) / 2.0)
     if boost_impulse != Vector3.ZERO or drifting:
         speed_percent = 1
     for i in range(0, 3):
-        rotation_speed[i] = clamp(rotation_speed[i], -ship.MAX_ROTATION_SPEED[i] * speed_percent, ship.MAX_ROTATION_SPEED[i] * speed_percent)
+        if rotation_input[i] > 0 and rotation_speed[i] < speed_percent * ship.MAX_ROTATION_SPEED[i]:
+            rotation_speed[i] = min(rotation_speed[i] + rotation_input[i], speed_percent * ship.MAX_ROTATION_SPEED[i])
+        elif rotation_input[i] < 0 and rotation_speed[i] > speed_percent * -ship.MAX_ROTATION_SPEED[i]:
+            rotation_speed[i] = max(rotation_speed[i] + rotation_input[i], speed_percent * -ship.MAX_ROTATION_SPEED[i])
 
     # Perform flight rotation
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
@@ -139,30 +141,50 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
     $camera_anchor.transform = mesh.transform
 
-    # acceleration and decceleration
-    var acceleration = Vector3.ZERO
-    for i in range(0, 3):
-        acceleration += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION
-
-    var decceleration = Vector3.ZERO
+    # decceleration
     if not drifting:
         for i in range(0, 3):
-            var velocity_component_in_basis_direction = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
-            if not drifting and i == 2 and throttle != 0:
-                if velocity_component_in_basis_direction.normalized() == mesh.transform.basis[i]:
-                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
-                elif velocity_component_in_basis_direction.normalized() == -mesh.transform.basis[i] and velocity_component_in_basis_direction.length() > (ship.MAX_THROTTLE_VELOCITY * throttle) + 5:
-                    decceleration += mesh.transform.basis[i] * ship.DECELERATION
-                elif velocity_component_in_basis_direction.length() < ship.MAX_THROTTLE_VELOCITY * throttle:
-                    acceleration += -mesh.transform.basis[i] * ship.ACCELERATION
-            elif thrust_input[i] == 0 and velocity_component_in_basis_direction.length() >= ship.ACCELERATION * delta: 
-                decceleration += -velocity_component_in_basis_direction.normalized() * ship.ACCELERATION
+            var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
+            var positive_basis = mesh.transform.basis[i]
+            if i == 2:
+                positive_basis *= -1
+            if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0 or (i == 2 and throttle > 0))):
+                var decel_strength = min(ship.ACCELERATION * delta, basis_velocity.length())
+                velocity += -basis_velocity * decel_strength
+    # thrust acceleration
+    for i in range(0, 3):
+        velocity += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION * delta
+    # throttle acceleration
+    if not drifting and throttle != 0:
+        var forward_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis.z)
+        var desired_forward_velocity = ship.MAX_THROTTLE_VELOCITY * throttle
+        # if flying backwards, accelerate
+        if forward_velocity.normalized().is_equal_approx(mesh.transform.basis.z):
+            velocity += -mesh.transform.basis.z * ship.ACCELERATION * delta
+        # if slower than desired velocity, accelerate
+        elif forward_velocity.length() < desired_forward_velocity:
+            var accel_strength = min(ship.ACCELERATION * delta, desired_forward_velocity - forward_velocity.length())
+            velocity += -mesh.transform.basis.z * accel_strength
+        # if faster than desired velocity, decelerate
+        elif forward_velocity.length() > desired_forward_velocity:
+            var decel_strength = min(ship.ACCELERATION * delta, forward_velocity.length() - desired_forward_velocity)
+            velocity += mesh.transform.basis.z * decel_strength
+
+    # limit velocities
+    for i in range(0, 3):
+        var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
+        var max_basis_velocity = ship.MAX_THRUST_VELOCITY
+        if i == 2:
+            max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
+        if basis_velocity.length() > max_basis_velocity:
+            velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
+    velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
+
+    # boost impulse doesn't care about basis velocity limits
     if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
-    else:
-        velocity += (acceleration + decceleration + collision_impulse) * delta
 
-    # velocity
+    # limit overall velocity
     velocity = velocity.limit_length(ship.TERMINAL_VELOCITY)
     if thrust_input == Vector3.ZERO and (throttle == 0 and not drifting) and velocity.length() <= 0.1:
         velocity = Vector3.ZERO
@@ -225,13 +247,13 @@ func shoot():
     bullet.aim(weapons_target)
     laser_timer.start(0.05)
 
-func handle_bullet():
+func handle_bullet(damage):
     if shields_online:
-        shields -= 1
+        shields -= damage
         if shields <= 0:
             shields_online = false
             shield_timer.start(5)
     else:
-        hull -= 1
+        hull -= damage
     if hull <= 0:
         queue_free()

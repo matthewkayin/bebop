@@ -2,7 +2,7 @@ extends CharacterBody3D
 
 @onready var helpers = get_node("/root/Helpers")
 
-@onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
+@onready var arc_laser_scene = preload("res://projectiles/arc_laser/arc_laser.tscn")
 
 @onready var mesh = $mesh
 @onready var camera_anchor = $camera_anchor
@@ -15,6 +15,7 @@ extends CharacterBody3D
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
 @onready var shield_timer = $shield_timer
+@onready var weapon_lock_timer = $weapon_lock_timer
 
 @onready var ship = preload("res://ships/hummingbird.tres")
 
@@ -40,6 +41,12 @@ var target = null
 var crosshair_position = Vector2.ZERO
 var target_reticle_position = null
 var target_follow_angle
+var is_shooting = false
+var weapon_range_min = 10
+var weapon_range_max = 40
+var weapon_max_aim_distance = 32
+var weapon_lock_duration = 3
+var weapon_has_lock = false
 
 var collision_radius = 0
 
@@ -54,6 +61,7 @@ func _ready():
     targeting_ray.add_exception(self)
     target_selection_ray.add_exception(self)
     laser_timer.timeout.connect(laser_timer_timeout)
+    weapon_lock_timer.timeout.connect(lock_target)
 
     hull = ship.HULL_STRENGTH
     shields = ship.SHIELD_STRENGTH
@@ -96,8 +104,8 @@ func _physics_process(delta):
         boost()
     if Input.is_action_just_pressed("flight_assist"):
         drifting = not drifting
-    if Input.is_action_pressed("shoot"):
-        if laser_timer.is_stopped():
+    if Input.is_action_just_pressed("shoot"):
+        if not is_shooting:
             shoot()
     if Input.is_action_just_pressed("target"):
         target = null
@@ -129,11 +137,12 @@ func _physics_process(delta):
             rotation_input[i] = clamp(rotation_input[i], -3, 3)
 
     # flight assist rotation correction
-    for i in range(0, 3):
-        if rotation_speed[i] > 0:
-            rotation_speed[i] -= 0.02
-        elif rotation_speed[i] < 0:
-            rotation_speed[i] += 0.02
+    if not drifting:
+        for i in range(0, 3):
+            if rotation_speed[i] > 0:
+                rotation_speed[i] -= 0.02
+            elif rotation_speed[i] < 0:
+                rotation_speed[i] += 0.02
 
     var roll = rotation_input.x
     var yaw = rotation_input.z
@@ -256,9 +265,14 @@ func _physics_process(delta):
             target_follow_angle = rad_to_deg(screen_direction.angle())
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
-    # note: max range is handled by the ray length
-    if target_reticle_position != null and position.distance_to(target.position) >= 5 and position.distance_to(target.position) <= 25 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= 30:
-        weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
+    if target_reticle_position != null and position.distance_to(target.position) >= weapon_range_min and position.distance_to(target.position) <= weapon_range_max and crosshair_position.distance_to(target_reticle_position) <= weapon_max_aim_distance:
+        if weapon_has_lock:
+            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
+        elif weapon_lock_timer.is_stopped():
+            weapon_lock_timer.start(weapon_lock_duration)
+    else:
+        weapon_has_lock = false
+        weapon_lock_timer.stop()
     targeting_ray.look_at(weapons_target)
     targeting_ray.force_raycast_update()
     if targeting_ray.is_colliding():
@@ -289,29 +303,41 @@ func boost():
     has_boost = true
 
 func laser_timer_timeout():
-    if Input.is_action_pressed("shoot"):
-        shoot()
+    pass
+    # if Input.is_action_pressed("shoot"):
+        # shoot()
+
+func lock_target():
+    weapon_has_lock = true
 
 func shoot():
-    var bullet = laser_scene.instantiate()
-    get_parent().add_child(bullet)
-    if weapon_alternator == 0:
-        bullet.position = laser_mount.global_position
-        weapon_alternator = 1
-    else:
-        bullet.position = laser_mount2.global_position
-        weapon_alternator = 0
-    bullet.add_collision_exception_with(self)
-    bullet.aim(weapons_target)
-    laser_timer.start(0.05)
+    is_shooting = true
+    for i in range(0, 2):
+        var bullet = arc_laser_scene.instantiate()
+        get_parent().add_child(bullet)
+        var skew = mesh.transform.basis.x
+        if weapon_alternator == 0:
+            bullet.position = laser_mount.global_position
+            weapon_alternator = 1
+        else:
+            bullet.position = laser_mount2.global_position
+            weapon_alternator = 0
+        bullet.add_collision_exception_with(self)
+        var bullet_target = null
+        if weapon_has_lock:
+            bullet_target = target
+        bullet.aim(bullet_target, weapons_target, skew)
+        # laser_timer.start(0.05)
+        # await laser_timer.timeout
+    is_shooting = false
 
-func handle_bullet():
+func handle_bullet(damage):
     if shields_online:
-        shields -= 1
+        shields -= damage
         if shields <= 0:
             shields_online = false
             shield_timer.start(5)
     else:
-        hull -= 1
+        hull -= damage
     if hull <= 0:
         visible = false
