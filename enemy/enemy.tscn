@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://c7vpudmpp13vy"]
 
 [ext_resource type="Script" path="res://enemy/enemy.gd" id="1_c4ye0"]
-[ext_resource type="ArrayMesh" uid="uid://da7ha2ixjvxmk" path="res://obj_mtl/ship3.obj" id="2_6iajo"]
+[ext_resource type="ArrayMesh" uid="uid://gejmb40nbd10" path="res://ship_test.obj" id="2_kast1"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3fc03"]
 albedo_color = Color(1, 0, 0, 1)
@@ -19,7 +19,7 @@ radius = 1.0
 script = ExtResource("1_c4ye0")
 
 [node name="mesh" type="MeshInstance3D" parent="."]
-mesh = ExtResource("2_6iajo")
+mesh = ExtResource("2_kast1")
 surface_material_override/0 = SubResource("StandardMaterial3D_3fc03")
 
 [node name="laser_mount" type="Node3D" parent="mesh"]
@@ -29,7 +29,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.31690
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.791745, -0.185402, -0.316905)
 
 [node name="targeting_ray" type="RayCast3D" parent="mesh"]
-target_position = Vector3(0, 0, -25)
+target_position = Vector3(0, 0, -100)
 
 [node name="body_collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
@@ -49,6 +49,12 @@ disabled = true
 one_shot = true
 
 [node name="shield_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="weapon_lock_timer" type="Timer" parent="."]
+one_shot = true
+
+[node name="maneuver_timer" type="Timer" parent="."]
 one_shot = true
 
 [node name="camera_anchor" type="Node3D" parent="."]

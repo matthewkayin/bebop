@@ -3,6 +3,7 @@ extends CharacterBody3D
 @onready var helpers = get_node("/root/Helpers")
 
 @onready var arc_laser_scene = preload("res://projectiles/arc_laser/arc_laser.tscn")
+@onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
 @onready var mesh = $mesh
 @onready var camera_anchor = $camera_anchor
@@ -42,11 +43,12 @@ var crosshair_position = Vector2.ZERO
 var target_reticle_position = null
 var target_follow_angle
 var is_shooting = false
-var weapon_range_min = 10
-var weapon_range_max = 40
-var weapon_max_aim_distance = 32
-var weapon_lock_duration = 3
 var weapon_has_lock = false
+var current_weapon = 0
+var weapon_range_min = [5, 10]
+var weapon_range_max = [30, 40]
+var weapon_max_aim_distance = [128, 32]
+var weapon_lock_duration = [0, 3]
 
 var collision_radius = 0
 
@@ -105,8 +107,11 @@ func _physics_process(delta):
     if Input.is_action_just_pressed("flight_assist"):
         drifting = not drifting
     if Input.is_action_just_pressed("shoot"):
-        if not is_shooting:
-            shoot()
+        on_initial_shoot()
+    if Input.is_action_just_pressed("swap_weapons"):
+        laser_timer.stop()
+        weapon_lock_timer.stop()
+        current_weapon = (current_weapon + 1) % 2
     if Input.is_action_just_pressed("target"):
         target = null
         for _target in get_tree().get_nodes_in_group("targets"):
@@ -178,11 +183,12 @@ func _physics_process(delta):
     var thrust_input = Vector3.ZERO
     thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    var z_input = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+    thrust_input.z = Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards")
+    var throttle_input = Input.get_action_strength("throttle_up") - Input.get_action_strength("throttle_down")
     if drifting:
-        thrust_input.z = -z_input
+        thrust_input.z += -throttle_input
     else:
-        throttle = clamp(throttle + (z_input * 0.01), 0, 1)
+        throttle = clamp(throttle + (throttle_input * 0.01), 0, 1)
 
     # decceleration
     if not drifting:
@@ -265,11 +271,11 @@ func _physics_process(delta):
             target_follow_angle = rad_to_deg(screen_direction.angle())
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
-    if target_reticle_position != null and position.distance_to(target.position) >= weapon_range_min and position.distance_to(target.position) <= weapon_range_max and crosshair_position.distance_to(target_reticle_position) <= weapon_max_aim_distance:
-        if weapon_has_lock:
+    if target_reticle_position != null and position.distance_to(target.position) >= weapon_range_min[current_weapon] and position.distance_to(target.position) <= weapon_range_max[current_weapon] and crosshair_position.distance_to(target_reticle_position) <= weapon_max_aim_distance[current_weapon]:
+        if weapon_has_lock or weapon_lock_duration[current_weapon] == 0:
             weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
         elif weapon_lock_timer.is_stopped():
-            weapon_lock_timer.start(weapon_lock_duration)
+            weapon_lock_timer.start(weapon_lock_duration[current_weapon])
     else:
         weapon_has_lock = false
         weapon_lock_timer.stop()
@@ -282,8 +288,11 @@ func _physics_process(delta):
 
     # update shields
     if shield_timer.is_stopped():
-        shields = min(ship.SHIELD_STRENGTH, shields + (ship.SHIELD_RECHARGE_RATE * delta))
-        if not shields_online and shields >= int(ship.SHIELD_STRENGTH / 2.0):
+        var shield_recharge_rate = ship.SHIELD_RECHARGE_RATE
+        if not shields_online:
+            shield_recharge_rate *= 2
+        shields = min(ship.SHIELD_STRENGTH, shields + (shield_recharge_rate * delta))
+        if not shields_online and shields == ship.SHIELD_STRENGTH:
             shields_online = true
 
 func boost():
@@ -303,14 +312,34 @@ func boost():
     has_boost = true
 
 func laser_timer_timeout():
-    pass
-    # if Input.is_action_pressed("shoot"):
-        # shoot()
+    if Input.is_action_pressed("shoot"):
+        shoot_laser()
 
 func lock_target():
     weapon_has_lock = true
 
-func shoot():
+func on_initial_shoot():
+    if current_weapon == 0:
+        if laser_timer.is_stopped():
+            shoot_laser()
+    elif current_weapon == 1:
+        if not is_shooting:
+            shoot_missile()
+
+func shoot_laser():
+    var bullet = laser_scene.instantiate()
+    get_parent().add_child(bullet)
+    if weapon_alternator == 0:
+        bullet.position = laser_mount.global_position
+        weapon_alternator = 1
+    else:
+        bullet.position = laser_mount2.global_position
+        weapon_alternator = 0
+    bullet.add_collision_exception_with(self)
+    bullet.aim(weapons_target)
+    laser_timer.start(0.05)
+
+func shoot_missile():
     is_shooting = true
     for i in range(0, 2):
         var bullet = arc_laser_scene.instantiate()
@@ -327,17 +356,15 @@ func shoot():
         if weapon_has_lock:
             bullet_target = target
         bullet.aim(bullet_target, weapons_target, skew)
-        # laser_timer.start(0.05)
-        # await laser_timer.timeout
     is_shooting = false
 
-func handle_bullet(damage):
+func handle_bullet(energy_damage, physical_damage):
     if shields_online:
-        shields -= damage
+        shields -= energy_damage
         if shields <= 0:
             shields_online = false
             shield_timer.start(5)
     else:
-        hull -= damage
+        hull -= physical_damage
     if hull <= 0:
         visible = false

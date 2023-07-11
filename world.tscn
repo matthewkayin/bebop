@@ -12,9 +12,10 @@ radius = 6.107
 [node name="world" type="Node3D"]
 
 [node name="player" parent="." instance=ExtResource("4_aypf1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -45.0981)
 
 [node name="asteroid" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.8266, 0, -23.4724)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.289, 8.53363, -190.146)
 script = ExtResource("3_vc7jk")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid"]
@@ -27,7 +28,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
 shape = SubResource("SphereShape3D_afxhx")
 
 [node name="asteroid2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.73403, 11.5713, -32.1606)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.54545, 11.5713, -174.464)
 script = ExtResource("3_vc7jk")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid2"]
@@ -40,7 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.568947)
 shape = SubResource("SphereShape3D_afxhx")
 
 [node name="asteroid3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.3417, 4.72081, -21.1812)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.71145, 4.72081, -16.027)
 script = ExtResource("3_vc7jk")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="asteroid3"]
@@ -58,4 +59,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.0639, 0)
 [node name="ui" parent="." instance=ExtResource("2_1m3i6")]
 
 [node name="enemy" parent="." instance=ExtResource("2_c2cxq")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4463, 3.39966, -37.5742)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.59695, 3.39966, 40.6637)
