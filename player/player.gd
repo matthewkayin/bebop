@@ -349,6 +349,7 @@ func shoot_missile():
             bullet.position = laser_mount.global_position
             weapon_alternator = 1
         else:
+            skew *= -1
             bullet.position = laser_mount2.global_position
             weapon_alternator = 0
         bullet.add_collision_exception_with(self)

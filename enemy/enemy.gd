@@ -90,8 +90,10 @@ func _physics_process(delta):
                 # calculate and apply avoidance
                 # var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(obstacle.position)))
                 # var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
-                var avoidance_strength = ((relative_velocity.length() / 5) * 0.75) + ((1 - (collision_distance / stop_distance)) * 0.25)
+                var avoidance_strength = ((relative_velocity.length() / 5) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
                 # used further down in the code to cause the ship to hit the brakes if it's too close to a collision
+                if obstacle == target:
+                    avoidance_strength *= 2
                 if collision_distance / stop_distance >= 0.75:
                     collision_eminent = true
                 var avoidance = -position.direction_to(obstacle.position) * avoidance_strength 
@@ -124,8 +126,6 @@ func _physics_process(delta):
         throttle = 0.5
         if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
             throttle = 0.45
-        elif direction_xbasis.length() <= 0.2 and direction_ybasis.length() <= 0.2 and position.distance_to(target.position) <= 15:
-            throttle = target.velocity.length() / ship.MAX_THROTTLE_VELOCITY
         elif position.distance_to(target.position) <= 25:
             throttle = 0.5
         if position.distance_to(target.position) <= 50:
@@ -339,6 +339,7 @@ func shoot_missile():
             bullet.position = laser_mount.global_position
             weapon_alternator = 1
         else:
+            skew *= -1
             bullet.position = laser_mount2.global_position
             weapon_alternator = 0
         bullet.add_collision_exception_with(self)
