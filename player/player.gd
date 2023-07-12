@@ -70,18 +70,7 @@ func _input(event):
         if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
             Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
     elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-        rotation_input.y += event.relative.y * 0.01
-        if Input.is_action_pressed("yaw_roll"):
-            rotation_input.z += event.relative.x * 0.01
-        else:
-            var prev_rotation_input = rotation_input.x
-            rotation_input.x += event.relative.x * 0.01
-            if Vector2(prev_rotation_input, 0).normalized() != Vector2(rotation_input.x, 0).normalized():
-                yaw_roll_timer.start(0.25)
-    if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
-        rotation_input.x = Input.get_action_strength("yaw_right") - Input.get_action_strength("yaw_left")
-        rotation_input.y = Input.get_action_strength("pitch_up") - Input.get_action_strength("pitch_down")
-        roll_input = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
+        crosshair_position += event.relative
 
 func _physics_process(delta):
     if not visible:
@@ -90,7 +79,6 @@ func _physics_process(delta):
     if Input.is_action_just_pressed("escape"):
         if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
             Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-            rotation_input = Vector3.ZERO
 
     if Input.is_action_just_pressed("boost") and has_boost:
         boost()
@@ -116,9 +104,13 @@ func _physics_process(delta):
                 if target_selection_ray.is_colliding() and target_selection_ray.get_collider() == _target:
                     target = _target
 
-    crosshair_position += rotation_input * CROSSHAIR_SENSITIVITY * delta
-    crosshair_position.x = clamp(crosshair_position.x, 0, get_viewport().get_visible_rect().size.x)
-    crosshair_position.y = clamp(crosshair_position.y, 0, get_viewport().get_visible_rect().size.y)
+    if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
+        rotation_input.x = Input.get_action_strength("yaw_right") - Input.get_action_strength("yaw_left")
+        rotation_input.y = Input.get_action_strength("pitch_up") - Input.get_action_strength("pitch_down")
+        roll_input = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
+        crosshair_position += rotation_input * CROSSHAIR_SENSITIVITY * delta
+        crosshair_position.x = clamp(crosshair_position.x, 0, get_viewport().get_visible_rect().size.x)
+        crosshair_position.y = clamp(crosshair_position.y, 0, get_viewport().get_visible_rect().size.y)
 
     var crosshair_value = (crosshair_position - (get_viewport().get_visible_rect().size / 2)) / (get_viewport().get_visible_rect().size / 2)
     var camera_speed = Vector2.ZERO
@@ -128,6 +120,7 @@ func _physics_process(delta):
     mesh.transform.basis = mesh.transform.basis.rotated(camera_anchor.transform.basis.z, roll_input * delta)
     camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.x, camera_speed.y * delta)
     camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.y, camera_speed.x * delta)
+
     # slowly return crosshair to screen center
     crosshair_position += camera_speed * 2
     camera.position.x = lerp(camera.position.x, crosshair_value.x * 4, delta)
@@ -137,10 +130,22 @@ func _physics_process(delta):
         camera.position.y = lerp(camera.position.y, 2 - (crosshair_value.y * 1), delta)
 
     var rotation_lookat_target = camera.project_position(crosshair_position, 500)
-    var flipped = 1
-    if crosshair_value.y > 0.5:
-        flipped = -1
-    mesh.transform = mesh.transform.interpolate_with(mesh.transform.looking_at(rotation_lookat_target, (flipped * camera_anchor.transform.basis.y).rotated(camera_anchor.transform.basis.x, (PI / 2) * flipped * abs(crosshair_value.x))), 0.5 * delta)
+    var rotation_lookat_angle = rad_to_deg(mesh.transform.basis.y.signed_angle_to(position.direction_to(rotation_lookat_target), mesh.transform.basis.z))
+    if rotation_lookat_angle < 0:
+        rotation_lookat_angle = 360 + rotation_lookat_angle
+    print(rotation_lookat_angle)
+    rotation_speed.x = 0
+    if abs(rotation_lookat_angle) > 30:
+        rotation_speed.x = 1
+    elif abs(rotation_lookat_angle) > 10:
+        rotation_speed.x = 0.5
+    else:
+        rotation_speed.y = -1
+    if rotation_lookat_angle > (360 - rotation_lookat_angle):
+        rotation_speed.x *= -1
+
+    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
+    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
