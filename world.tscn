@@ -1,8 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://djedhq6bu54k5"]
+[gd_scene load_steps=6 format=3 uid="uid://djedhq6bu54k5"]
 
 [ext_resource type="ArrayMesh" uid="uid://bk2xvj7a4qi7b" path="res://Asteroids/asteriod5.obj" id="1_gj8tp"]
 [ext_resource type="PackedScene" uid="uid://df4xxm47v5pld" path="res://ui/ui.tscn" id="2_1m3i6"]
-[ext_resource type="PackedScene" uid="uid://c7vpudmpp13vy" path="res://enemy/enemy.tscn" id="2_c2cxq"]
 [ext_resource type="Script" path="res://static_obstacle.gd" id="3_vc7jk"]
 [ext_resource type="PackedScene" uid="uid://g8nl5yla04y7" path="res://player/player.tscn" id="4_aypf1"]
 
@@ -94,6 +93,3 @@ shape = SubResource("SphereShape3D_afxhx")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24.0639, 0)
 
 [node name="ui" parent="." instance=ExtResource("2_1m3i6")]
-
-[node name="enemy" parent="." instance=ExtResource("2_c2cxq")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.59695, 3.39966, -4.51206)
