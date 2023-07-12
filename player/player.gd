@@ -116,36 +116,22 @@ func _physics_process(delta):
     var camera_speed = Vector2.ZERO
     if crosshair_value.length() > 0.1:
         camera_speed = crosshair_value * -1
-    camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.z, roll_input * delta)
-    mesh.transform.basis = mesh.transform.basis.rotated(camera_anchor.transform.basis.z, roll_input * delta)
-    camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.x, camera_speed.y * delta)
-    camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.y, camera_speed.x * delta)
+    # camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.x, camera_speed.y * delta)
+    # camera_anchor.transform.basis = camera_anchor.transform.basis.rotated(camera_anchor.transform.basis.y, camera_speed.x * delta)
 
     # slowly return crosshair to screen center
-    crosshair_position += camera_speed * 2
-    camera.position.x = lerp(camera.position.x, crosshair_value.x * 4, delta)
+    crosshair_position += camera_speed * 4
+    camera.position.x = lerp(camera.position.x, crosshair_value.x * 3, delta)
     if crosshair_value.y > 0:
-        camera.position.y = lerp(camera.position.y, 2 + (crosshair_value.y * 0.25), delta)
+        camera.position.y = lerp(camera.position.y, 2 + (crosshair_value.y * 0.1), delta)
     else:
-        camera.position.y = lerp(camera.position.y, 2 - (crosshair_value.y * 1), delta)
+        camera.position.y = lerp(camera.position.y, 2 - (crosshair_value.y * 0.75), delta)
 
+    # var rotation_lookat_angle = rad_to_deg(mesh.transform.basis.y.signed_angle_to(position.direction_to(rotation_lookat_target), mesh.transform.basis.z))
     var rotation_lookat_target = camera.project_position(crosshair_position, 500)
-    var rotation_lookat_angle = rad_to_deg(mesh.transform.basis.y.signed_angle_to(position.direction_to(rotation_lookat_target), mesh.transform.basis.z))
-    if rotation_lookat_angle < 0:
-        rotation_lookat_angle = 360 + rotation_lookat_angle
-    print(rotation_lookat_angle)
-    rotation_speed.x = 0
-    if abs(rotation_lookat_angle) > 30:
-        rotation_speed.x = 1
-    elif abs(rotation_lookat_angle) > 10:
-        rotation_speed.x = 0.5
-    else:
-        rotation_speed.y = -1
-    if rotation_lookat_angle > (360 - rotation_lookat_angle):
-        rotation_speed.x *= -1
-
-    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
-    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
+    var speed_percent = velocity.length() / ship.MAX_THROTTLE_VELOCITY
+    mesh.transform = mesh.transform.interpolate_with(mesh.transform.looking_at(rotation_lookat_target, camera_anchor.basis.y.rotated(camera_anchor.basis.x, (PI / 2) * abs(crosshair_value.x))), (1 + (speed_percent * 3)) * delta)
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta)
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
@@ -159,6 +145,8 @@ func _physics_process(delta):
         throttle = clamp(throttle + (throttle_input * 0.01), 0, 1)
 
     # decceleration
+    var desired_velocity = -mesh.transform.basis.z * throttle * ship.MAX_THROTTLE_VELOCITY
+    var desired_velocity_direction = desired_velocity.normalized()
     if not drifting:
         for i in range(0, 3):
             var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
@@ -166,8 +154,9 @@ func _physics_process(delta):
             if i == 2:
                 positive_basis *= -1
             if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0 or (i == 2 and throttle > 0))):
-                var decel_strength = min(ship.ACCELERATION * delta, basis_velocity.length())
+                var decel_strength = min(ship.DECELERATION * delta, basis_velocity.length())
                 velocity += -basis_velocity * decel_strength
+                velocity += desired_velocity_direction * decel_strength
     # thrust acceleration
     for i in range(0, 3):
         velocity += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION * delta
@@ -184,7 +173,7 @@ func _physics_process(delta):
             velocity += -mesh.transform.basis.z * accel_strength
         # if faster than desired velocity, decelerate
         elif forward_velocity.length() > desired_forward_velocity:
-            var decel_strength = min(ship.ACCELERATION * delta, forward_velocity.length() - desired_forward_velocity)
+            var decel_strength = min(ship.DECELERATION * delta, forward_velocity.length() - desired_forward_velocity)
             velocity += mesh.transform.basis.z * decel_strength
 
     # limit velocities
@@ -195,7 +184,7 @@ func _physics_process(delta):
             max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
         if basis_velocity.length() > max_basis_velocity:
             velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
-    velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
+    velocity = velocity.limit_length(desired_velocity.length())
 
     # boost impulse doesn't care about basis velocity limits
     if boost_impulse != Vector3.ZERO:
