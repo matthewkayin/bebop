@@ -75,22 +75,22 @@ throttle_down={
 ]
 }
 thrust_right={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":1.0,"script":null)
 ]
 }
 thrust_left={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":0,"axis_value":-1.0,"script":null)
 ]
 }
 thrust_up={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":10,"pressure":0.0,"pressed":true,"script":null)
 ]
 }
 thrust_down={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":9,"pressure":0.0,"pressed":true,"script":null)
 ]
 }
@@ -124,12 +124,12 @@ yaw_roll={
 "events": []
 }
 thrust_backwards={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":1,"axis_value":1.0,"script":null)
 ]
 }
 thrust_forwards={
-"deadzone": 0.5,
+"deadzone": 0.05,
 "events": [Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":-1,"axis":1,"axis_value":-1.0,"script":null)
 ]
 }

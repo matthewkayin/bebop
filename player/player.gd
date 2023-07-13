@@ -150,7 +150,6 @@ func _physics_process(delta):
             var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             var positive_basis = mesh.transform.basis[i]
             if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0)):
-                print("hey", i)
                 var decel_strength = min(ship.DECELERATION * delta, basis_velocity.length())
                 velocity += -basis_velocity * decel_strength
     # if thrust_input != Vector3.ZERO:
@@ -182,7 +181,6 @@ func _physics_process(delta):
         if i == 2:
             max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
         if basis_velocity.length() > max_basis_velocity:
-            print("limited")
             velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
     velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
 
