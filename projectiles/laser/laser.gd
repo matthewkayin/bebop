@@ -2,7 +2,7 @@ extends StaticBody3D
 
 @onready var beam = $beam
 
-const SPEED = 70
+const SPEED = 70 * 2
 const RANGE = 30
 const PHYSICAL_DAMAGE = 0
 const ENERGY_DAMAGE = 2

@@ -4,7 +4,7 @@ extends Control
 @onready var target_label = $target_label
 @onready var throttle_label = $throttle_label
 @onready var crosshair = $crosshair
-@onready var crosshair_arrow = $crosshair/crosshair_arrow
+@onready var navigator = $navigator
 @onready var target = $target
 @onready var target_follow_arrow = $target_follow_arrow
 
@@ -66,14 +66,7 @@ func _process(_delta):
                 point.x *= -1
         target_follow_arrow.position = screen_center + (point.normalized() * (point.length() - 11))
 
-    # velocity_label.text = ""
-    # while player.debug_display.size() != 0:
-        # velocity_label.text += player.debug_display[0] + "\n"
-        # player.debug_display.pop_front()
-
     throttle_label.text = ""
-    if player.drifting:
-        throttle_label.text += "Drifting"
     throttle_label.text += "\n"
     if player.boost_impulse != Vector3.ZERO:
         throttle_label.text += "Boosting!\n"
@@ -81,8 +74,6 @@ func _process(_delta):
         throttle_label.text += "Charging...\n"
     else:
         throttle_label.text += "Boost Ready\n"
-    throttle_label.text += "Throttle: "
-    throttle_label.text += str(int(player.throttle * 100)) + "\n"
     throttle_label.text += "S: " + str(snapped(player.velocity.length(), 0.1)) + " / " + str(snapped(player.helpers.vector_component_in_vector_direction(player.velocity, -player.mesh.transform.basis.z).length(), 0.1))
 
     health_label.text = "Hull: " + str(player.hull) + "\n"
@@ -107,6 +98,7 @@ func _process(_delta):
             target_label.text += "Shields: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
 
     crosshair.position = player.crosshair_position
+    navigator.position = player.navigator_position
     target.visible = false
     if player.target_reticle_position != null:
         target.visible = true
@@ -117,9 +109,3 @@ func _process(_delta):
             target.texture = target_aquiring_texture
         else:
             target.texture = target_texture
-    if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-        crosshair_arrow.visible = player.rotation_input.length() > 0.01
-        crosshair_arrow.position = Vector2(player.rotation_input.x, -player.rotation_input.y) * 128
-        crosshair_arrow.rotation = crosshair_arrow.position.angle() + (PI / 2)
-    else: 
-        crosshair_arrow.visible = false

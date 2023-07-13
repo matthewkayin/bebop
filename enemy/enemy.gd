@@ -10,7 +10,7 @@ extends CharacterBody3D
 @onready var targeting_ray = $mesh/targeting_ray
 @onready var shield_timer = $shield_timer
 @onready var weapon_lock_timer = $weapon_lock_timer
-@onready var maneuver_timer = $maneuver_timer
+@onready var camera_anchor = $camera_anchor
 
 @onready var arc_laser_scene = preload("res://projectiles/arc_laser/arc_laser.tscn")
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
@@ -136,33 +136,32 @@ func _physics_process(delta):
             throttle = 0.4
             thrust_input.z = 1
 
-    # flight assist rotation correction
-    if not drifting:
-        for i in range(0, 3):
-            if rotation_speed[i] > 0:
-                rotation_speed[i] -= 0.02
-            elif rotation_speed[i] < 0:
-                rotation_speed[i] += 0.02
+    var roll_input = 0
 
-    var speed_percent = 1 - (abs((velocity.length() / ship.TERMINAL_VELOCITY) - 0.45) / 2.0)
-    if boost_impulse != Vector3.ZERO or drifting:
-        speed_percent = 1
+    # lookat style rotation towards target
+    var rotation_lookat_target = Vector3.ZERO
+    # var bank_angle = (PI / 2) * abs(navigator_value.x)
+    var bank_angle = 0
+    var rotation_up_direction = camera_anchor.basis.y.rotated(camera_anchor.basis.x, bank_angle)
+    var rotation_target_transform = mesh.transform.looking_at(rotation_lookat_target, rotation_up_direction)
+    var speed_percent = velocity.length() / ship.MAX_THROTTLE_VELOCITY
+    mesh.transform = mesh.transform.interpolate_with(rotation_target_transform, (1 + (speed_percent * 3)) * delta)
+
+    # physics-based rotation (for stuff like collisions)
     for i in range(0, 3):
-        if rotation_input[i] > 0 and rotation_speed[i] < speed_percent * ship.MAX_ROTATION_SPEED[i]:
-            rotation_speed[i] = min(rotation_speed[i] + rotation_input[i], speed_percent * ship.MAX_ROTATION_SPEED[i])
-        elif rotation_input[i] < 0 and rotation_speed[i] > speed_percent * -ship.MAX_ROTATION_SPEED[i]:
-            rotation_speed[i] = max(rotation_speed[i] + rotation_input[i], speed_percent * -ship.MAX_ROTATION_SPEED[i])
-
-    # Perform flight rotation
+        if rotation_speed[i] > 0:
+            rotation_speed[i] = max(rotation_speed[i] - 0.02, 0)
+        elif rotation_speed[i] < 0:
+            rotation_speed[i] = min(rotation_speed[i] + 0.02, 0)
+    if roll_input > 0:
+        rotation_speed.x = min(rotation_speed.x + roll_input, 2)
+    elif roll_input < 0:
+        rotation_speed.x = max(rotation_speed.x + roll_input, -2)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
     mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
     mesh.transform.basis = mesh.transform.basis.orthonormalized()
-    var camera_follow_speed_percent = 1
-    if rotation_speed.length() > ship.MAX_ROTATION_SPEED.length():
-        camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
-    var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
-    $camera_anchor.transform = $camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
+    camera_anchor.transform = mesh.transform
 
     # decceleration
     if not drifting:

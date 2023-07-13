@@ -3,9 +3,8 @@
 [ext_resource type="Script" path="res://projectiles/laser/laser.gd" id="1_elo6w"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_3si81"]
-top_radius = 0.05
-bottom_radius = 0.05
-height = 1.0
+top_radius = 0.1
+bottom_radius = 0.1
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nhr2s"]
 transparency = 1
@@ -15,8 +14,7 @@ emission = Color(1, 1, 0.392157, 1)
 emission_energy_multiplier = 10.0
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_o6nbv"]
-height = 1.0
-radius = 0.05
+radius = 0.1
 
 [node name="laser" type="StaticBody3D"]
 collision_layer = 0
