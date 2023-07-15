@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://g8nl5yla04y7"]
+[gd_scene load_steps=7 format=3 uid="uid://g8nl5yla04y7"]
 
 [ext_resource type="Script" path="res://player/player.gd" id="1_j1hqe"]
 [ext_resource type="ArrayMesh" uid="uid://gejmb40nbd10" path="res://ship_test.obj" id="2_fbyei"]
@@ -11,6 +11,9 @@ size = Vector3(2.4, 0.1, 0.5)
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_juui0"]
 radius = 1.0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_gm64f"]
+radius = 5.0
 
 [node name="player" type="CharacterBody3D"]
 script = ExtResource("1_j1hqe")
@@ -65,3 +68,10 @@ one_shot = true
 
 [node name="weapon_lock_timer" type="Timer" parent="."]
 one_shot = true
+
+[node name="avoidance_sphere2" type="StaticBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+
+[node name="collider" type="CollisionShape3D" parent="avoidance_sphere2"]
+shape = SubResource("SphereShape3D_gm64f")

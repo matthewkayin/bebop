@@ -28,9 +28,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.31690
 [node name="laser_mount2" type="Node3D" parent="mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.791745, -0.185402, -0.316905)
 
-[node name="targeting_ray" type="RayCast3D" parent="mesh"]
-target_position = Vector3(0, 0, -100)
-
 [node name="body_collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
 shape = SubResource("BoxShape3D_luhjr")
@@ -42,6 +39,26 @@ shape = SubResource("BoxShape3D_piifi")
 [node name="avoidance_sphere" type="CollisionShape3D" parent="."]
 shape = SubResource("SphereShape3D_f7pmd")
 disabled = true
+
+[node name="targeting_ray" type="RayCast3D" parent="."]
+target_position = Vector3(0, 0, -100)
+
+[node name="avoidance_ray" type="RayCast3D" parent="."]
+target_position = Vector3(0, 0, -25)
+collision_mask = 2
+
+[node name="avoidance_ray_left" type="RayCast3D" parent="."]
+target_position = Vector3(0, 0, -25)
+collision_mask = 2
+
+[node name="avoidance_ray_right" type="RayCast3D" parent="."]
+collision_mask = 2
+
+[node name="avoidance_ray_up" type="RayCast3D" parent="."]
+collision_mask = 2
+
+[node name="avoidance_ray_down" type="RayCast3D" parent="."]
+collision_mask = 2
 
 [node name="boost_timer" type="Timer" parent="."]
 
@@ -60,7 +77,7 @@ one_shot = true
 [node name="camera_anchor" type="Node3D" parent="."]
 
 [node name="camera" type="Camera3D" parent="camera_anchor"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 3.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 5.5)
 
 [node name="targeting_ray" type="RayCast3D" parent="camera_anchor/camera"]
 target_position = Vector3(0, 0, -25)

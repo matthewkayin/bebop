@@ -77,25 +77,11 @@ func _process(_delta):
     throttle_label.text += "S: " + str(snapped(player.velocity.length(), 0.1)) + " / " + str(snapped(player.helpers.vector_component_in_vector_direction(player.velocity, -player.mesh.transform.basis.z).length(), 0.1))
 
     health_label.text = "Hull: " + str(player.hull) + "\n"
-    if not player.shields_online:
-        if not player.shield_timer.is_stopped():
-            health_label.text += "Shields Offline!"
-        else:
-            health_label.text += "Recharging: " + str(int((player.shields / player.ship.SHIELD_STRENGTH) * 100)) + "%"
-    else:
-        health_label.text += "Shields: " + str(int((player.shields / player.ship.SHIELD_STRENGTH) * 100)) + "%"
 
     if player.target == null:
         target_label.text = ""
     else:
         target_label.text = "Hull: " + str(player.target.hull) + "\n"
-        if not player.target.shields_online:
-            if not player.target.shield_timer.is_stopped():
-                target_label.text += "Shields Offline!"
-            else:
-                target_label.text += "Recharging: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
-        else:
-            target_label.text += "Shields: " + str(int((player.target.shields / player.target.ship.SHIELD_STRENGTH) * 100)) + "%"
 
     crosshair.position = player.crosshair_position
     navigator.position = player.navigator_position

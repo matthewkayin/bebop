@@ -7,28 +7,29 @@ extends CharacterBody3D
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
-@onready var targeting_ray = $mesh/targeting_ray
-@onready var shield_timer = $shield_timer
+@onready var targeting_ray = $targeting_ray
 @onready var weapon_lock_timer = $weapon_lock_timer
 @onready var camera_anchor = $camera_anchor
+@onready var avoidance_ray = $avoidance_ray
+@onready var avoidance_ray_left = $avoidance_ray_left
+@onready var avoidance_ray_right = $avoidance_ray_right
+@onready var avoidance_ray_up = $avoidance_ray_up
+@onready var avoidance_ray_down = $avoidance_ray_down
+@onready var maneuver_timer = $maneuver_timer
 
 @onready var arc_laser_scene = preload("res://projectiles/arc_laser/arc_laser.tscn")
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
 
 @onready var ship = preload("res://ships/hummingbird.tres")
 
-var rotation_input = Vector3(0, 0, 0)
 var rotation_speed = Vector3(0, 0, 0)
 
-var throttle = 0
 var thrust_input = Vector3.ZERO
-var maneuvering = false
-var maneuver_cooldown = false
 
 var has_boost = true
 var boost_impulse = Vector3.ZERO
 var collision_impulse = Vector3.ZERO
-var drifting = false
+var is_maneuvering = false
 
 var weapons_target = null
 var weapon_alternator = 0
@@ -36,116 +37,107 @@ var target = null
 var number = 0
 var weapon_has_lock = false
 var current_weapon = 0
-var weapon_range_min = [5, 10]
-var weapon_range_max = [30, 40]
+var weapon_range_min = [0, 10]
+var weapon_range_max = [50, 40]
 var weapon_max_aim_angle = [15, 30]
 var weapon_lock_duration = [0, 3]
 var is_shooting = false
 
 var collision_radius = 0
 
-var shields_online = true
 var hull = 0
-var shields = 0
 
-var rng
+var direction = Vector3.FORWARD
 
 func _ready():
     add_to_group("obstacles")
     add_to_group("targets")
     collision_radius = $avoidance_sphere.shape.radius
-    targeting_ray.add_exception(self)
+
+    var avoidance_ray_angle = 15
+    var avoidance_ray_length = abs(avoidance_ray.target_position.z)
+    var avoidance_ray_opposite = avoidance_ray_length * sin(deg_to_rad(avoidance_ray_angle))
+    var avoidance_ray_adjacent = avoidance_ray_length * cos(deg_to_rad(avoidance_ray_angle))
+    avoidance_ray_left.target_position = Vector3(-avoidance_ray_opposite, 0, -avoidance_ray_adjacent)
+    avoidance_ray_right.target_position = Vector3(avoidance_ray_opposite, 0, -avoidance_ray_adjacent)
+    avoidance_ray_up.target_position = Vector3(0, avoidance_ray_opposite, -avoidance_ray_adjacent)
+    avoidance_ray_down.target_position = Vector3(0, -avoidance_ray_opposite, -avoidance_ray_adjacent)
+
     weapon_lock_timer.timeout.connect(lock_target)
-
     hull = ship.HULL_STRENGTH
-    shields = ship.SHIELD_STRENGTH
-
-    rng = RandomNumberGenerator.new()
+    current_weapon = 0
 
 func _physics_process(delta):
     if target == null:
         target = get_node_or_null("../player")
 
     # pathfinding
-    throttle = 0
-    rotation_input = Vector3.ZERO
-    thrust_input = Vector3.ZERO
-
-    if target != null and not maneuvering:
-        # set initial direction towards target
-        var direction = position.direction_to(target.position + target.velocity)
+    if target != null and not is_maneuvering:
+        thrust_input = Vector3.ZERO
 
         # obstacle avoidance
-        var collision_eminent = false
-        for obstacle in get_tree().get_nodes_in_group("obstacles"):
-            if obstacle == self:
-                continue
-            # calculate avoidance radius 
-            var relative_velocity = helpers.vector_component_in_vector_direction(velocity - obstacle.velocity, position.direction_to(obstacle.position))
-            if not relative_velocity.normalized().is_equal_approx(position.direction_to(obstacle.position)):
-                relative_velocity = Vector3.ZERO
-            var stop_distance = ((relative_velocity.length() * relative_velocity.length()) / ship.ACCELERATION) + obstacle.collision_radius
-            var collision_distance = position.distance_to(obstacle.position) - obstacle.collision_radius 
-            if collision_distance <= stop_distance:
-                # calculate and apply avoidance
-                # var collision_angle = rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(obstacle.position)))
-                # var avoidance_strength = ((1 - (collision_angle / 180)) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
-                var avoidance_strength = ((relative_velocity.length() / 5) * 0.5) + ((1 - (collision_distance / stop_distance)) * 0.5)
-                # used further down in the code to cause the ship to hit the brakes if it's too close to a collision
-                if obstacle == target:
-                    avoidance_strength *= 2
-                if collision_distance / stop_distance >= 0.75:
-                    collision_eminent = true
-                var avoidance = -position.direction_to(obstacle.position) * avoidance_strength 
-                direction += avoidance
-        direction = direction.normalized()
+        var avoidance = Vector3.ZERO
+        for ray in [avoidance_ray, avoidance_ray_right, avoidance_ray_down, avoidance_ray_up, avoidance_ray_left]:
+            ray.force_raycast_update()
+            if ray.is_colliding():
+                avoidance += -(position + velocity).direction_to(ray.get_collision_point())
+        avoidance = avoidance.normalized() * 0.5
 
-        var direction_xbasis = helpers.vector_component_in_vector_direction(direction, mesh.transform.basis.x)
-        var direction_ybasis = helpers.vector_component_in_vector_direction(direction, mesh.transform.basis.y)
-        if direction_xbasis.length() > 0.2:
-            if direction_xbasis.normalized().is_equal_approx(mesh.transform.basis.x):
-                rotation_input.x = -1
+        var desired_direction
+
+        # ai chase mode
+        if position.distance_to(target.position) > 20:
+            desired_direction = position.direction_to(target.global_transform.origin)
+            desired_direction += avoidance
+            desired_direction = desired_direction.normalized()
+
+            thrust_input.z = -1
+        # ai evasive mode
+        # note that this mode should only be used when ai is within a certain range of the player otherwise the ai might just flee indefinitely
+        elif target.target == self and target.weapon_has_lock:
+            var should_maneuver = maneuver_timer.is_stopped() 
+
+            if should_maneuver:
+                # begin barrel roll
+                is_maneuvering = true
+                desired_direction = direction
+                var barrel_roll_direction = 1
+                if randi_range(0, 1) == 0:
+                    barrel_roll_direction = -1
+                thrust_input.x = barrel_roll_direction
+                var barrel_roll_tween = get_tree().create_tween()
+                barrel_roll_tween.tween_property(mesh, "rotation", mesh.rotation + Vector3(0, 0, 2 * PI * barrel_roll_direction), 1.75)
+                barrel_roll_tween.tween_callback(func(): 
+                    is_maneuvering = false
+                    maneuver_timer.start(randf_range(5, 15))
+                )
             else:
-                rotation_input.x = 1
-            if direction_xbasis.length() <= 0.3:
-                rotation_input.z = rotation_input.z
-                rotation_input.x *= 0.5
-        elif direction_xbasis.length() > 0.05:
-            if direction_xbasis.normalized().is_equal_approx(mesh.transform.basis.x):
-                rotation_input.z = -1
-            else:
-                rotation_input.z = 1
-        if direction_ybasis.length() > 0.1:
-            if direction_ybasis.normalized().is_equal_approx(mesh.transform.basis.y):
-                rotation_input.y = 1
-            else:
-                rotation_input.y = -1
-        if direction_xbasis.length() < 0.25 and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) > 45 and position.distance_to(target.position) <= 25:
-             thrust_input.y = -rotation_input.y
-        
-        throttle = 0.5
-        if direction_xbasis.length() > 0.3 or direction_ybasis.length() > 0.3:
-            throttle = 0.45
-        elif position.distance_to(target.position) <= 25:
-            throttle = 0.5
-        if position.distance_to(target.position) <= 50:
-            throttle = 0.75
+                desired_direction = -(position.direction_to(target.global_transform.origin))
+                desired_direction += avoidance
+                desired_direction = desired_direction.normalized()
+                thrust_input.z = -1
+        # ai strafe mode
         else:
-            throttle = 1
-        if collision_eminent:
-            throttle = 0.4
-            thrust_input.z = 1
+            desired_direction = position.direction_to(target.global_transform.origin)
+            var desired_velocity_direction = position.direction_to(target.global_transform.origin + Vector3(0, 0, 10))
+            desired_velocity_direction += avoidance
+            desired_velocity_direction = desired_velocity_direction.normalized()
 
+            thrust_input = desired_velocity_direction
+            
+        direction = (direction + (desired_direction * 0.1)).normalized()
+
+    var rotation_lookat_target = position + (direction * 100)
     var roll_input = 0
 
     # lookat style rotation towards target
-    var rotation_lookat_target = Vector3.ZERO
-    # var bank_angle = (PI / 2) * abs(navigator_value.x)
-    var bank_angle = 0
-    var rotation_up_direction = camera_anchor.basis.y.rotated(camera_anchor.basis.x, bank_angle)
-    var rotation_target_transform = mesh.transform.looking_at(rotation_lookat_target, rotation_up_direction)
+    var bank_angle = (PI / 2) * ((-transform.basis.z).signed_angle_to(direction, transform.basis.y) / PI)  
+    if not is_maneuvering:
+        mesh.rotation.z = bank_angle
+    var rotation_target_transform = transform.looking_at(rotation_lookat_target, Vector3.UP)
     var speed_percent = velocity.length() / ship.MAX_THROTTLE_VELOCITY
-    mesh.transform = mesh.transform.interpolate_with(rotation_target_transform, (1 + (speed_percent * 3)) * delta)
+    speed_percent = 1
+    transform = transform.interpolate_with(rotation_target_transform, (1 + (speed_percent * 3)) * delta)
 
     # physics-based rotation (for stuff like collisions)
     for i in range(0, 3):
@@ -157,82 +149,57 @@ func _physics_process(delta):
         rotation_speed.x = min(rotation_speed.x + roll_input, 2)
     elif roll_input < 0:
         rotation_speed.x = max(rotation_speed.x + roll_input, -2)
-    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.z, rotation_speed.x * delta)
-    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.x, rotation_speed.y * delta)
-    mesh.transform.basis = mesh.transform.basis.rotated(mesh.transform.basis.y, rotation_speed.z * delta)
-    mesh.transform.basis = mesh.transform.basis.orthonormalized()
-    camera_anchor.transform = mesh.transform
+    transform.basis = transform.basis.rotated(transform.basis.z, rotation_speed.x * delta)
+    transform.basis = transform.basis.rotated(transform.basis.x, rotation_speed.y * delta)
+    transform.basis = transform.basis.rotated(transform.basis.y, rotation_speed.z * delta)
+    transform.basis = transform.basis.orthonormalized()
+    camera_anchor.transform = camera_anchor.transform.interpolate_with(camera_anchor.transform.looking_at(position - Vector3(0, 0, 100), Vector3.UP), delta)
 
     # decceleration
-    if not drifting:
+    if thrust_input != Vector3.ZERO:
         for i in range(0, 3):
-            var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
+            var basis_velocity = helpers.vector_component_in_vector_direction(velocity, transform.basis[i])
             var positive_basis = mesh.transform.basis[i]
-            if i == 2:
-                positive_basis *= -1
-            if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0 or (i == 2 and throttle > 0))):
-                var decel_strength = min(ship.ACCELERATION * delta, basis_velocity.length())
+            if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0)):
+                var decel_strength = min(ship.DECELERATION * delta, basis_velocity.length())
                 velocity += -basis_velocity * decel_strength
+
     # thrust acceleration
     for i in range(0, 3):
-        velocity += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION * delta
-    # throttle acceleration
-    if not drifting and throttle != 0:
-        var forward_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis.z)
-        var desired_forward_velocity = ship.MAX_THROTTLE_VELOCITY * throttle
-        # if flying backwards, accelerate
-        if forward_velocity.normalized().is_equal_approx(mesh.transform.basis.z):
-            velocity += -mesh.transform.basis.z * ship.ACCELERATION * delta
-        # if slower than desired velocity, accelerate
-        elif forward_velocity.length() < desired_forward_velocity:
-            var accel_strength = min(ship.ACCELERATION * delta, desired_forward_velocity - forward_velocity.length())
-            velocity += -mesh.transform.basis.z * accel_strength
-        # if faster than desired velocity, decelerate
-        elif forward_velocity.length() > desired_forward_velocity:
-            var decel_strength = min(ship.ACCELERATION * delta, forward_velocity.length() - desired_forward_velocity)
-            velocity += mesh.transform.basis.z * decel_strength
-
-    # limit velocities
-    for i in range(0, 3):
-        var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
+        velocity += transform.basis[i] * thrust_input[i] * ship.ACCELERATION * delta
+        var basis_velocity = helpers.vector_component_in_vector_direction(velocity, transform.basis[i])
         var max_basis_velocity = ship.MAX_THRUST_VELOCITY
         if i == 2:
             max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
         if basis_velocity.length() > max_basis_velocity:
             velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
-    velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
+    if boost_impulse == Vector3.ZERO:
+        velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
 
     # boost impulse doesn't care about basis velocity limits
     if boost_impulse != Vector3.ZERO:
         velocity += boost_impulse * delta
 
-    # limit overall velocity
+    # limit velocity
     velocity = velocity.limit_length(ship.TERMINAL_VELOCITY)
-    if thrust_input == Vector3.ZERO and (throttle == 0 and not drifting) and velocity.length() <= 0.1:
-        velocity = Vector3.ZERO
 
     # move and handle collisions
     var collision = move_and_collide(velocity * delta)
     collision_impulse = Vector3.ZERO
     if collision:
         collision_impulse = collision.get_normal() * velocity.length() * ship.COLLISION_IMPULSE_MODIFIER * delta
-        rotation_speed[0] = collision.get_normal().signed_angle_to(velocity, Vector3.FORWARD)
-        rotation_speed[1] = collision.get_normal().signed_angle_to(velocity, Vector3.UP)
-        rotation_speed[2] = collision.get_normal().signed_angle_to(velocity, Vector3.RIGHT)
+        rotation_speed.x = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.x)
+        rotation_speed.y = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.z) 
+        rotation_speed.z = -collision.get_normal().signed_angle_to(velocity, mesh.transform.basis.y) 
         rotation_speed *= velocity.length() * ship.COLLISION_ROTATION_MODIFIER
-
-    if target != null:
-        if target.shields_online:
-            current_weapon = 0
-        else:
-            current_weapon = 1
 
     # try to lock on to target
     weapons_target = null
-    # note: max range is handled by the ray length
-    if target != null and position.distance_to(target.position) >= weapon_range_min[current_weapon] and position.distance_to(target.position) <= weapon_range_max[current_weapon] and rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(target.position))) <= weapon_max_aim_angle[current_weapon]:
-        if weapon_has_lock or weapon_lock_duration[current_weapon] == 0:
-            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
+    if target != null and position.distance_to(target.position) >= weapon_range_min[current_weapon] and position.distance_to(target.position) <= weapon_range_max[current_weapon] and rad_to_deg((-transform.basis.z).angle_to(position.direction_to(target.position))) <= weapon_max_aim_angle[current_weapon]:
+        if weapon_lock_duration[current_weapon] == 0:
+            weapon_has_lock = true
+        if weapon_has_lock: 
+            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 140))
             targeting_ray.look_at(weapons_target)
             targeting_ray.force_raycast_update()
             if targeting_ray.is_colliding():
@@ -242,57 +209,16 @@ func _physics_process(delta):
     else:
         weapon_has_lock = false
         weapon_lock_timer.stop()
-    if weapon_has_lock or not weapon_lock_timer.is_stopped():
-        mesh.get_surface_override_material(0).albedo_color = Color(1, 0, 1)
-    else:
-        mesh.get_surface_override_material(0).albedo_color = Color(1, 0, 0)
 
     # shoot target
     if weapons_target != null:
         shoot()
-
-    # update shields
-    if shield_timer.is_stopped():
-        var shield_recharge_rate = ship.SHIELD_RECHARGE_RATE
-        if not shields_online:
-            shield_recharge_rate *= 2
-        shields = min(ship.SHIELD_STRENGTH, shields + (shield_recharge_rate * delta))
-        if not shields_online and shields == ship.SHIELD_STRENGTH:
-            shields_online = true
+        mesh.get_surface_override_material(0).albedo_color = Color(1, 0, 1)
+    else:
+        mesh.get_surface_override_material(0).albedo_color = Color(1, 0, 0)
 
 func lock_target():
     weapon_has_lock = true
-
-func notify_of_incoming_missile():
-    if not maneuvering:
-        do_maneuver()
-
-func do_maneuver():
-    maneuvering = true
-
-    var maneuver_direction = rng.randi_range(0, 1)
-    if maneuver_direction == 0:
-        maneuver_direction = -1
-
-    drifting = true
-    thrust_input = Vector3.ZERO
-    rotation_input = Vector3.ZERO
-
-    thrust_input.x = maneuver_direction
-    rotation_input.x = maneuver_direction
-
-    maneuver_timer.start(3.0)
-    await maneuver_timer.timeout
-
-    thrust_input.x = 0
-
-    maneuver_timer.start(3.0)
-    await maneuver_timer.timeout
-
-    rotation_input.x = 0
-    drifting = false
-
-    maneuvering = false
 
 func boost():
     has_boost = false
@@ -308,6 +234,7 @@ func boost():
     has_boost = true
 
 func shoot():
+    return
     if is_shooting or not laser_timer.is_stopped():
         return
     if current_weapon == 0:
@@ -326,7 +253,7 @@ func shoot_laser():
         weapon_alternator = 0
     bullet.add_collision_exception_with(self)
     bullet.aim(weapons_target)
-    laser_timer.start(0.05)
+    laser_timer.start(0.1)
 
 func shoot_missile():
     is_shooting = true
@@ -349,13 +276,7 @@ func shoot_missile():
     is_shooting = false
     laser_timer.start(1)
 
-func handle_bullet(energy_damage, physical_damage):
-    if shields_online:
-        shields -= energy_damage
-        if shields <= 0:
-            shields_online = false
-            shield_timer.start(5)
-    else:
-        hull -= physical_damage
+func handle_bullet(damage):
+    hull -= damage
     if hull <= 0:
         queue_free()

@@ -15,7 +15,6 @@ extends CharacterBody3D
 @onready var laser_mount = $mesh/laser_mount
 @onready var laser_mount2 = $mesh/laser_mount2
 @onready var laser_timer = $laser_timer
-@onready var shield_timer = $shield_timer
 @onready var weapon_lock_timer = $weapon_lock_timer
 
 @onready var ship = preload("res://ships/hummingbird.tres")
@@ -51,9 +50,7 @@ var weapon_lock_duration = [0, 3]
 
 var collision_radius = 0
 
-var shields_online = true
 var hull = 0
-var shields = 0
 
 func _ready():
     add_to_group("obstacles")
@@ -65,7 +62,6 @@ func _ready():
     camera_trauma_noise.set_noise_type(FastNoiseLite.TYPE_SIMPLEX)
     camera_trauma_noise.seed = randi()
     camera_trauma_noise.frequency = 2.0
-    # camera_trauma_noise.fractal_octaves = 2
 
     collision_radius = $avoidance_sphere.shape.radius
     targeting_ray.add_exception(self)
@@ -74,7 +70,6 @@ func _ready():
     weapon_lock_timer.timeout.connect(lock_target)
 
     hull = ship.HULL_STRENGTH
-    shields = ship.SHIELD_STRENGTH
 
 func _input(event):
     if event is InputEventMouseButton:
@@ -112,6 +107,7 @@ func _physics_process(delta):
                 target_selection_ray.force_raycast_update()
                 if target_selection_ray.is_colliding() and target_selection_ray.get_collider() == _target:
                     target = _target
+    var roll_input = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
 
     # handle joystick cursor input
     if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
@@ -147,7 +143,6 @@ func _physics_process(delta):
             rotation_speed[i] = max(rotation_speed[i] - 0.02, 0)
         elif rotation_speed[i] < 0:
             rotation_speed[i] = min(rotation_speed[i] + 0.02, 0)
-    var roll_input = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
     if roll_input > 0:
         rotation_speed.x = min(rotation_speed.x + roll_input, 2)
     elif roll_input < 0:
@@ -161,7 +156,7 @@ func _physics_process(delta):
     var camera_follow_speed_percent = 1
     if rotation_speed.length() > ship.MAX_ROTATION_SPEED.length():
         camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
-    var camera_speed_mod = 1.5 + abs(rotation_speed.x * 0.5)
+    var camera_speed_mod = 1.5 
     camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
     camera.position.x = lerp(camera.position.x, navigator_value.x * 3, delta)
     if navigator_value.y > 0:
@@ -184,7 +179,7 @@ func _physics_process(delta):
     thrust_input.z = -(Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards"))
 
     # decceleration
-    if thrust_input != Vector3.ZERO:
+    if boost_impulse == Vector3.ZERO and thrust_input != Vector3.ZERO:
         for i in range(0, 3):
             var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
             var positive_basis = mesh.transform.basis[i]
@@ -193,6 +188,7 @@ func _physics_process(delta):
                 velocity += -basis_velocity * decel_strength
 
     # thrust acceleration
+    var previous_velocity = velocity.length()
     for i in range(0, 3):
         velocity += mesh.transform.basis[i] * thrust_input[i] * ship.ACCELERATION * delta
         var basis_velocity = helpers.vector_component_in_vector_direction(velocity, mesh.transform.basis[i])
@@ -201,7 +197,7 @@ func _physics_process(delta):
             max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
         if basis_velocity.length() > max_basis_velocity:
             velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
-    if boost_impulse == Vector3.ZERO:
+    if boost_impulse == Vector3.ZERO and previous_velocity <= ship.MAX_THROTTLE_VELOCITY:
         velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
 
     # boost impulse doesn't care about basis velocity limits
@@ -246,7 +242,9 @@ func _physics_process(delta):
 
     weapons_target = $mesh/target.to_global($mesh/target.position)
     if target_reticle_position != null and position.distance_to(target.position) >= weapon_range_min[current_weapon] and position.distance_to(target.position) <= weapon_range_max[current_weapon] and crosshair_position.distance_to(target_reticle_position) <= weapon_max_aim_distance[current_weapon]:
-        if weapon_has_lock or weapon_lock_duration[current_weapon] == 0:
+        if weapon_lock_duration[current_weapon] == 0:
+            weapon_has_lock = true
+        if weapon_has_lock: 
             weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
         elif weapon_lock_timer.is_stopped():
             weapon_lock_timer.start(weapon_lock_duration[current_weapon])
@@ -262,14 +260,7 @@ func _physics_process(delta):
     if (crosshair_position - (get_viewport().get_visible_rect().size / 2)).length() <= 2:
         crosshair_position = get_viewport().get_visible_rect().size / 2
     
-    # update shields
-    if shield_timer.is_stopped():
-        var shield_recharge_rate = ship.SHIELD_RECHARGE_RATE
-        if not shields_online:
-            shield_recharge_rate *= 2
-        shields = min(ship.SHIELD_STRENGTH, shields + (shield_recharge_rate * delta))
-        if not shields_online and shields == ship.SHIELD_STRENGTH:
-            shields_online = true
+    print(rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(rotation_lookat_target))))
 
 func boost():
     has_boost = false
@@ -336,13 +327,8 @@ func shoot_missile():
         bullet.aim(bullet_target, weapons_target, skew)
     is_shooting = false
 
-func handle_bullet(energy_damage, physical_damage):
-    if shields_online:
-        shields -= energy_damage
-        if shields <= 0:
-            shields_online = false
-            shield_timer.start(5)
-    else:
-        hull -= physical_damage
+func handle_bullet(damage):
+    hull -= damage
     if hull <= 0:
         visible = false
+    camera_trauma = max(2.0, camera_trauma)

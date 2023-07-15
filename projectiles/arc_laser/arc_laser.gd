@@ -3,8 +3,7 @@ extends StaticBody3D
 @onready var beam = $beam
 
 const RANGE = 50
-const PHYSICAL_DAMAGE = 30
-const ENERGY_DAMAGE = 0
+const DAMAGE = 30
 
 var target
 var curve_start
@@ -44,7 +43,7 @@ func _process(delta):
     var collision = move_and_collide(velocity)
     if collision:
         if collision.get_collider().has_method("handle_bullet"):
-            collision.get_collider().handle_bullet(ENERGY_DAMAGE, PHYSICAL_DAMAGE)
+            collision.get_collider().handle_bullet(DAMAGE)
         queue_free()
     elif (position - curve_start).length() >= RANGE:
         queue_free()
