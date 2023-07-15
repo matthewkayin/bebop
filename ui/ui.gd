@@ -4,7 +4,6 @@ extends Control
 @onready var target_label = $target_label
 @onready var throttle_label = $throttle_label
 @onready var crosshair = $crosshair
-@onready var navigator = $navigator
 @onready var target = $target
 @onready var target_follow_arrow = $target_follow_arrow
 
@@ -64,7 +63,7 @@ func _process(_delta):
                 point.y *= -1
             if quadrant == 1 or quadrant == 2:
                 point.x *= -1
-        target_follow_arrow.position = screen_center + (point.normalized() * (point.length() - 11))
+        target_follow_arrow.position = screen_center + (point.normalized() * (point.length() - 22))
 
     throttle_label.text = ""
     throttle_label.text += "\n"
@@ -84,7 +83,6 @@ func _process(_delta):
         target_label.text = "Hull: " + str(player.target.hull) + "\n"
 
     crosshair.position = player.crosshair_position
-    navigator.position = player.navigator_position
     target.visible = false
     if player.target_reticle_position != null:
         target.visible = true

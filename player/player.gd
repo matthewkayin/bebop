@@ -21,12 +21,11 @@ extends CharacterBody3D
 
 @export var invert_pitch = false
 
-const CROSSHAIR_SENSITIVITY = 300
+const CROSSHAIR_SENSITIVITY = 600
 var rotation_input = Vector2.ZERO
 var rotation_speed = Vector3.ZERO
 
 var crosshair_position = Vector2.ZERO
-var navigator_position = Vector2.ZERO
 
 var camera_trauma_noise
 var camera_trauma_noise_pos = Vector2(randi_range(1, 100), 1)
@@ -56,7 +55,6 @@ func _ready():
     add_to_group("obstacles")
 
     crosshair_position = get_viewport().get_visible_rect().size / 2
-    navigator_position = get_viewport().get_visible_rect().size / 2
 
     camera_trauma_noise = FastNoiseLite.new()
     camera_trauma_noise.set_noise_type(FastNoiseLite.TYPE_SIMPLEX)
@@ -117,24 +115,24 @@ func _physics_process(delta):
     # update navigator based on input
     if invert_pitch:
         rotation_input.y = -rotation_input.y
-    navigator_position += rotation_input * CROSSHAIR_SENSITIVITY * delta
-    navigator_position.x = clamp(navigator_position.x, 0, get_viewport().get_visible_rect().size.x)
-    navigator_position.y = clamp(navigator_position.y, 0, get_viewport().get_visible_rect().size.y)
-    var navigator_value = (navigator_position - (get_viewport().get_visible_rect().size / 2)) / (get_viewport().get_visible_rect().size / 2)
+    crosshair_position += rotation_input * CROSSHAIR_SENSITIVITY * delta
+    crosshair_position.x = clamp(crosshair_position.x, 0, get_viewport().get_visible_rect().size.x)
+    crosshair_position.y = clamp(crosshair_position.y, 0, get_viewport().get_visible_rect().size.y)
+    var crosshair_value = (crosshair_position - (get_viewport().get_visible_rect().size / 2)) / (get_viewport().get_visible_rect().size / 2)
 
     # slowly return navigator to screen center
-    if (navigator_position - (get_viewport().get_visible_rect().size / 2)).length() <= 2:
-        navigator_position = get_viewport().get_visible_rect().size / 2
+    if (crosshair_position - (get_viewport().get_visible_rect().size / 2)).length() <= 2:
+        crosshair_position = get_viewport().get_visible_rect().size / 2
     else:
-        navigator_position += -navigator_value * 4
+        crosshair_position += -crosshair_value * 8
 
     # lookat style rotation towards target
-    var rotation_lookat_target = camera.project_position(navigator_position, 500)
-    var bank_angle = (PI / 2) * abs(navigator_value.x)
+    var rotation_lookat_target = camera.project_position(crosshair_position, 500)
+    var bank_angle = (PI / 2) * abs(crosshair_value.x)
     var rotation_up_direction = camera_anchor.basis.y.rotated(camera_anchor.basis.x, bank_angle)
     var rotation_target_transform = mesh.transform.looking_at(rotation_lookat_target, rotation_up_direction)
     var speed_percent = velocity.length() / ship.MAX_THROTTLE_VELOCITY
-    if not (navigator_position == get_viewport().get_visible_rect().size / 2 and abs(rad_to_deg((-mesh.transform.basis.z).signed_angle_to(rotation_lookat_target, rotation_up_direction))) <= 2):
+    if not (crosshair_position == get_viewport().get_visible_rect().size / 2 and abs(rad_to_deg((-mesh.transform.basis.z).signed_angle_to(rotation_lookat_target, rotation_up_direction))) <= 2):
         mesh.transform = mesh.transform.interpolate_with(rotation_target_transform, (1 + (speed_percent * 3)) * delta)
 
     # physics-based rotation (for stuff like collisions)
@@ -158,11 +156,11 @@ func _physics_process(delta):
         camera_follow_speed_percent = 1 - min((rotation_speed.length() - ship.MAX_ROTATION_SPEED.length()) / ship.MAX_ROTATION_SPEED.length(), 1)
     var camera_speed_mod = 1.5 
     camera_anchor.transform = camera_anchor.transform.interpolate_with(mesh.transform, delta * camera_follow_speed_percent * camera_speed_mod)
-    camera.position.x = lerp(camera.position.x, navigator_value.x * 3, delta)
-    if navigator_value.y > 0:
-        camera.position.y = lerp(camera.position.y, 2 + (navigator_value.y * 0.1), delta)
+    camera.position.x = lerp(camera.position.x, crosshair_value.x * 3, delta)
+    if crosshair_value.y > 0:
+        camera.position.y = lerp(camera.position.y, 2 + (crosshair_value.y * 0.1), delta)
     else:
-        camera.position.y = lerp(camera.position.y, 2 - (navigator_value.y * 0.75), delta)
+        camera.position.y = lerp(camera.position.y, 2 - (crosshair_value.y * 0.75), delta)
     
     # camera shake
     var camera_shake_amount = camera_trauma * max(1, velocity.length() * 0.3)
@@ -240,12 +238,13 @@ func _physics_process(delta):
                 screen_direction.y *= -1
             target_follow_angle = rad_to_deg(screen_direction.angle())
 
-    weapons_target = $mesh/target.to_global($mesh/target.position)
+    weapons_target = rotation_lookat_target
     if target_reticle_position != null and position.distance_to(target.position) >= weapon_range_min[current_weapon] and position.distance_to(target.position) <= weapon_range_max[current_weapon] and crosshair_position.distance_to(target_reticle_position) <= weapon_max_aim_distance[current_weapon]:
         if weapon_lock_duration[current_weapon] == 0:
             weapon_has_lock = true
         if weapon_has_lock: 
-            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
+            pass
+            # weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 50))
         elif weapon_lock_timer.is_stopped():
             weapon_lock_timer.start(weapon_lock_duration[current_weapon])
     else:
@@ -255,12 +254,6 @@ func _physics_process(delta):
     targeting_ray.force_raycast_update()
     if targeting_ray.is_colliding():
         weapons_target = targeting_ray.get_collision_point()
-
-    crosshair_position = camera.unproject_position(weapons_target)
-    if (crosshair_position - (get_viewport().get_visible_rect().size / 2)).length() <= 2:
-        crosshair_position = get_viewport().get_visible_rect().size / 2
-    
-    print(rad_to_deg((-mesh.transform.basis.z).angle_to(position.direction_to(rotation_lookat_target))))
 
 func boost():
     has_boost = false
@@ -297,10 +290,12 @@ func shoot_laser():
     var bullet = laser_scene.instantiate()
     get_parent().add_child(bullet)
     if weapon_alternator == 0:
-        bullet.position = laser_mount.global_position - mesh.transform.basis.z
+        # bullet.position = laser_mount.global_position - mesh.transform.basis.z
+        bullet.position = position - mesh.transform.basis.z
         weapon_alternator = 1
     else:
-        bullet.position = laser_mount2.global_position - mesh.transform.basis.z
+        bullet.position = position - mesh.transform.basis.z
+        # bullet.position = laser_mount2.global_position - mesh.transform.basis.z
         weapon_alternator = 0
     bullet.add_collision_exception_with(self)
     bullet.aim(weapons_target)

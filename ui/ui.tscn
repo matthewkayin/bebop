@@ -1,9 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://df4xxm47v5pld"]
+[gd_scene load_steps=5 format=3 uid="uid://df4xxm47v5pld"]
 
 [ext_resource type="Script" path="res://ui/ui.gd" id="1_6puy2"]
 [ext_resource type="Texture2D" uid="uid://cfifmuoslat6c" path="res://ui/crosshair.png" id="2_6gadp"]
 [ext_resource type="Texture2D" uid="uid://dvyyjsvhqswbl" path="res://ui/target.png" id="3_7fr8y"]
-[ext_resource type="Texture2D" uid="uid://b8l0bwc31fid4" path="res://ui/navigator.png" id="3_sctfs"]
 [ext_resource type="Texture2D" uid="uid://c52jm2tvd4tge" path="res://ui/crosshair_arrow.png" id="4_wbkrv"]
 
 [node name="ui" type="Control"]
@@ -22,8 +21,8 @@ text = "Velocity: <0, 0, 0>"
 
 [node name="target_label" type="Label" parent="."]
 layout_mode = 0
-offset_left = 548.0
-offset_right = 664.0
+offset_left = 1207.0
+offset_right = 1323.0
 offset_bottom = 52.0
 scale = Vector2(0.6, 0.6)
 text = "Hull: 100
@@ -32,10 +31,10 @@ horizontal_alignment = 2
 
 [node name="throttle_label" type="Label" parent="."]
 layout_mode = 0
-offset_left = 517.0
-offset_top = 249.0
-offset_right = 639.0
-offset_bottom = 327.0
+offset_left = 1130.0
+offset_top = 636.0
+offset_right = 1252.0
+offset_bottom = 714.0
 text = "Charging...
      Throttle: 100"
 horizontal_alignment = 2
@@ -44,18 +43,16 @@ vertical_alignment = 2
 [node name="crosshair" type="Sprite2D" parent="."]
 texture_filter = 1
 position = Vector2(320, 180)
+scale = Vector2(2, 2)
 texture = ExtResource("2_6gadp")
-
-[node name="navigator" type="Sprite2D" parent="."]
-texture_filter = 1
-position = Vector2(320, 180)
-texture = ExtResource("3_sctfs")
 
 [node name="target" type="Sprite2D" parent="."]
 texture_filter = 1
+scale = Vector2(2, 2)
 texture = ExtResource("3_7fr8y")
 
 [node name="target_follow_arrow" type="Sprite2D" parent="."]
-position = Vector2(631, 9.99997)
+position = Vector2(822, 9.99997)
+scale = Vector2(2, 2)
 texture = ExtResource("4_wbkrv")
 region_rect = Rect2(0, 0, 20, 22)

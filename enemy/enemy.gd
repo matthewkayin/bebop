@@ -70,6 +70,8 @@ func _ready():
 func _physics_process(delta):
     if target == null:
         target = get_node_or_null("../player")
+        if target.target != self:
+            target = null
 
     # pathfinding
     if target != null and not is_maneuvering:
@@ -87,37 +89,31 @@ func _physics_process(delta):
 
         # ai chase mode
         if position.distance_to(target.position) > 20:
+            print("chase")
             desired_direction = position.direction_to(target.global_transform.origin)
             desired_direction += avoidance
             desired_direction = desired_direction.normalized()
 
             thrust_input.z = -1
         # ai evasive mode
-        # note that this mode should only be used when ai is within a certain range of the player otherwise the ai might just flee indefinitely
-        elif target.target == self and target.weapon_has_lock:
-            var should_maneuver = maneuver_timer.is_stopped() 
-
-            if should_maneuver:
-                # begin barrel roll
-                is_maneuvering = true
-                desired_direction = direction
-                var barrel_roll_direction = 1
-                if randi_range(0, 1) == 0:
-                    barrel_roll_direction = -1
-                thrust_input.x = barrel_roll_direction
-                var barrel_roll_tween = get_tree().create_tween()
-                barrel_roll_tween.tween_property(mesh, "rotation", mesh.rotation + Vector3(0, 0, 2 * PI * barrel_roll_direction), 1.75)
-                barrel_roll_tween.tween_callback(func(): 
-                    is_maneuvering = false
-                    maneuver_timer.start(randf_range(5, 15))
-                )
-            else:
-                desired_direction = -(position.direction_to(target.global_transform.origin))
-                desired_direction += avoidance
-                desired_direction = desired_direction.normalized()
-                thrust_input.z = -1
+        elif maneuver_timer.is_stopped() and target.target == self and target.weapon_has_lock:
+            print("maneuver")
+            # begin barrel roll
+            is_maneuvering = true
+            desired_direction = direction
+            var barrel_roll_direction = 1
+            if randi_range(0, 1) == 0:
+                barrel_roll_direction = -1
+            thrust_input.x = barrel_roll_direction
+            var barrel_roll_tween = get_tree().create_tween()
+            barrel_roll_tween.tween_property(mesh, "rotation", mesh.rotation + Vector3(0, 0, 2 * PI * barrel_roll_direction), 1.75)
+            barrel_roll_tween.tween_callback(func(): 
+                is_maneuvering = false
+                maneuver_timer.start(randf_range(5, 120))
+            )
         # ai strafe mode
         else:
+            print("strafe")
             desired_direction = position.direction_to(target.global_transform.origin)
             var desired_velocity_direction = position.direction_to(target.global_transform.origin + Vector3(0, 0, 10))
             desired_velocity_direction += avoidance
@@ -234,7 +230,6 @@ func boost():
     has_boost = true
 
 func shoot():
-    return
     if is_shooting or not laser_timer.is_stopped():
         return
     if current_weapon == 0:
