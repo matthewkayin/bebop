@@ -145,7 +145,6 @@ func _physics_process(delta):
             rotation_speed[i] = max(rotation_speed[i] - 0.02, 0)
         elif rotation_speed[i] < 0:
             rotation_speed[i] = min(rotation_speed[i] + 0.02, 0)
-    print(rotation_speed, " and ", roll_input, " and ", mesh_anchor.transform.basis.y)
     var roll_speed = 1.5
     if roll_input > 0 and rotation_speed.x < roll_input * roll_speed:
         rotation_speed.x = roll_input * roll_speed
@@ -185,28 +184,44 @@ func _physics_process(delta):
     thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
     thrust_input.z = -(Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards"))
 
+    # determine the max velocity in the zbasis direction
+    var max_zbasis_velocity = ship.MAX_THROTTLE_VELOCITY
+    # if going backwards, zbasis direction has less maximum strength
+    if thrust_input.z > 0:
+        max_zbasis_velocity = ship.MAX_THRUST_VELOCITY
+    # if using lateral or vertical thrusters, zbasis direction has less maximum strength
+    max_zbasis_velocity = sqrt(pow(max_zbasis_velocity, 2) - pow(ship.MAX_THRUST_VELOCITY * abs(thrust_input[0]), 2) - pow(ship.MAX_THRUST_VELOCITY * abs(thrust_input[1]), 2))
+
     # decceleration
-    var thrust_bases = mesh_anchor.transform.basis.rotated(mesh_anchor.transform.basis.z, bank_angle)
-    if boost_impulse == Vector3.ZERO and thrust_input != Vector3.ZERO:
+    var thrust_basis = mesh_anchor.transform.basis.rotated(mesh_anchor.transform.basis.z, bank_angle)
+    if thrust_input != Vector3.ZERO:
         for i in range(0, 3):
-            var basis_velocity = helpers.vector_component_in_vector_direction(velocity, thrust_bases[i])
-            var positive_basis = thrust_bases[i]
-            if (basis_velocity.normalized().is_equal_approx(-positive_basis) and not thrust_input[i] < 0) or (basis_velocity.normalized().is_equal_approx(positive_basis) and not (thrust_input[i] > 0)):
-                var decel_strength = min(ship.DECELERATION * delta, basis_velocity.length())
-                velocity += -basis_velocity * decel_strength
+            var basis_velocity = helpers.vector_component_in_vector_direction(velocity, thrust_basis[i])
+            var max_basis_velocity = ship.MAX_THRUST_VELOCITY
+            if i == 2:
+                max_basis_velocity = max_zbasis_velocity
+            var positive_basis = thrust_basis[i]
+            if (basis_velocity.normalized().is_equal_approx(-positive_basis) and (not thrust_input[i] < 0) or (thrust_input[i] < 0 and basis_velocity.length() > max_basis_velocity)) \
+                or (basis_velocity.normalized().is_equal_approx(positive_basis) and (not thrust_input[i] > 0) or (thrust_input[i] > 0 and basis_velocity.length() > max_basis_velocity)):
+                    var decel_strength = min(ship.DECELERATION * delta, basis_velocity.length())
+                    velocity += -basis_velocity * decel_strength
 
     # thrust acceleration
-    var previous_velocity = velocity.length()
     for i in range(0, 3):
-        velocity += thrust_bases[i] * thrust_input[i] * ship.ACCELERATION * delta
-        var basis_velocity = helpers.vector_component_in_vector_direction(velocity, thrust_bases[i])
+        var acceleration_direction = thrust_basis[i] * thrust_input[i]
+        var acceleration_strength = ship.ACCELERATION * delta
+
+        var basis_velocity = helpers.vector_component_in_vector_direction(velocity, thrust_basis[i])
         var max_basis_velocity = ship.MAX_THRUST_VELOCITY
         if i == 2:
-            max_basis_velocity = ship.MAX_THROTTLE_VELOCITY
-        if basis_velocity.length() > max_basis_velocity:
-            velocity += -basis_velocity * (basis_velocity.length() - max_basis_velocity)
-    if boost_impulse == Vector3.ZERO and previous_velocity <= ship.MAX_THROTTLE_VELOCITY:
-        velocity = velocity.limit_length(ship.MAX_THROTTLE_VELOCITY)
+            max_basis_velocity = max_zbasis_velocity
+
+        if acceleration_direction.is_equal_approx(basis_velocity.normalized()) and acceleration_strength > max_basis_velocity - basis_velocity.length():
+            acceleration_strength = max_basis_velocity - basis_velocity.length()
+        if acceleration_strength > 0:
+            velocity += acceleration_direction * acceleration_strength
+
+    print(helpers.vector_component_in_vector_direction(velocity, thrust_basis[0]).length(), " / ", helpers.vector_component_in_vector_direction(velocity, thrust_basis[1]).length(), " / ", helpers.vector_component_in_vector_direction(velocity, thrust_basis[2]).length())
 
     # boost impulse doesn't care about basis velocity limits
     if boost_impulse != Vector3.ZERO:
