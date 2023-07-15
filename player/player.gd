@@ -20,9 +20,10 @@ extends CharacterBody3D
 
 @onready var ship = preload("res://ships/hummingbird.tres")
 
-@export var invert_pitch = false
+@export var invert_pitch: bool = false
+@export var sensitivity: float = 6
 
-const CROSSHAIR_SENSITIVITY = 600
+var CROSSHAIR_SENSITIVITY = sensitivity * 100
 var rotation_input = Vector2.ZERO
 var rotation_speed = Vector3.ZERO
 var roll_input = 0
@@ -83,12 +84,13 @@ func _input(event):
             crosshair_position += event.relative
 
 func _physics_process(delta):
-    if not visible:
-        return
     # misc inputs
     if Input.is_action_just_pressed("escape"):
         if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
             Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+    if not visible:
+        return
 
     if Input.is_action_just_pressed("boost") and has_boost:
         boost()
@@ -202,7 +204,6 @@ func _physics_process(delta):
             thrust_input.z -= 1
         if Input.is_action_pressed("button_thrust_backwards"):
             thrust_input.z += 1
-        print(thrust_input)
 
     # determine the max velocity in the zbasis direction
     var max_zbasis_velocity = ship.MAX_THROTTLE_VELOCITY

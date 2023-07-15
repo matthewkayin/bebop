@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://fufpnshly3ui"]
+
+[ext_resource type="Script" path="res://projectiles/laser/bullet_puff.gd" id="1_ompsn"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_ghv5l"]
+
+[node name="bullet_puff" type="MeshInstance3D"]
+mesh = SubResource("SphereMesh_ghv5l")
+script = ExtResource("1_ompsn")
