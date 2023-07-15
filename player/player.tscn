@@ -18,16 +18,19 @@ radius = 5.0
 [node name="player" type="CharacterBody3D"]
 script = ExtResource("1_j1hqe")
 
-[node name="mesh" type="MeshInstance3D" parent="."]
-mesh = ExtResource("2_fbyei")
+[node name="mesh_anchor" type="Node3D" parent="."]
 
-[node name="laser_mount" type="Node3D" parent="mesh"]
+[node name="mesh" type="MeshInstance3D" parent="mesh_anchor"]
+mesh = ExtResource("2_fbyei")
+skeleton = NodePath("../..")
+
+[node name="laser_mount" type="Node3D" parent="mesh_anchor/mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.789813, -0.185402, -0.316905)
 
-[node name="laser_mount2" type="Node3D" parent="mesh"]
+[node name="laser_mount2" type="Node3D" parent="mesh_anchor/mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.791745, -0.185402, -0.316905)
 
-[node name="target" type="Node3D" parent="mesh"]
+[node name="target" type="Node3D" parent="mesh_anchor/mesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -100)
 
 [node name="camera_anchor" type="Node3D" parent="."]
