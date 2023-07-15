@@ -25,6 +25,7 @@ extends CharacterBody3D
 const CROSSHAIR_SENSITIVITY = 600
 var rotation_input = Vector2.ZERO
 var rotation_speed = Vector3.ZERO
+var roll_input = 0
 
 var crosshair_position = Vector2.ZERO
 
@@ -75,7 +76,11 @@ func _input(event):
         if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
             Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
     elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-        crosshair_position += event.relative
+        roll_input = 0
+        if Input.is_action_pressed("yaw_roll"):
+            roll_input = clamp(-event.relative.x, -1, 1)
+        else:
+            crosshair_position += event.relative
 
 func _physics_process(delta):
     if not visible:
@@ -106,10 +111,10 @@ func _physics_process(delta):
                 target_selection_ray.force_raycast_update()
                 if target_selection_ray.is_colliding() and target_selection_ray.get_collider() == _target:
                     target = _target
-    var roll_input = Input.get_action_strength("roll_left") - Input.get_action_strength("roll_right")
 
     # handle joystick cursor input
     if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:  
+        roll_input = 0
         if Input.is_action_pressed("yaw_roll"):
             roll_input = Input.get_action_strength("yaw_left") - Input.get_action_strength("yaw_right")
         else:
@@ -180,9 +185,24 @@ func _physics_process(delta):
 
     # Check thrust inputs
     var thrust_input = Vector3.ZERO
-    thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
-    thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
-    thrust_input.z = -(Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards"))
+    if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
+        thrust_input.y = Input.get_action_strength("thrust_up") - Input.get_action_strength("thrust_down")
+        thrust_input.x = Input.get_action_strength("thrust_right") - Input.get_action_strength("thrust_left")
+        thrust_input.z = -(Input.get_action_strength("thrust_forwards") - Input.get_action_strength("thrust_backwards"))
+    else:
+        if Input.is_action_pressed("button_thrust_up"):
+            thrust_input.y += 1
+        if Input.is_action_pressed("button_thrust_down"):
+            thrust_input.y -= 1
+        if Input.is_action_pressed("button_thrust_right"):
+            thrust_input.x += 1
+        if Input.is_action_pressed("button_thrust_left"):
+            thrust_input.x -= 1
+        if Input.is_action_pressed("button_thrust_forwards"):
+            thrust_input.z -= 1
+        if Input.is_action_pressed("button_thrust_backwards"):
+            thrust_input.z += 1
+        print(thrust_input)
 
     # determine the max velocity in the zbasis direction
     var max_zbasis_velocity = ship.MAX_THROTTLE_VELOCITY
@@ -220,8 +240,6 @@ func _physics_process(delta):
             acceleration_strength = max_basis_velocity - basis_velocity.length()
         if acceleration_strength > 0:
             velocity += acceleration_direction * acceleration_strength
-
-    print(helpers.vector_component_in_vector_direction(velocity, thrust_basis[0]).length(), " / ", helpers.vector_component_in_vector_direction(velocity, thrust_basis[1]).length(), " / ", helpers.vector_component_in_vector_direction(velocity, thrust_basis[2]).length())
 
     # boost impulse doesn't care about basis velocity limits
     if boost_impulse != Vector3.ZERO:
