@@ -55,8 +55,6 @@ var collision_radius = 0
 var hull = 0
 
 func _ready():
-    add_to_group("obstacles")
-
     crosshair_position = get_viewport().get_visible_rect().size / 2
 
     camera_trauma_noise = FastNoiseLite.new()

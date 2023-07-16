@@ -60,6 +60,8 @@ collision_mask = 2
 [node name="avoidance_ray_down" type="RayCast3D" parent="."]
 collision_mask = 2
 
+[node name="maneuver_check_ray" type="RayCast3D" parent="."]
+
 [node name="boost_timer" type="Timer" parent="."]
 
 [node name="laser_timer" type="Timer" parent="."]

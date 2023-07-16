@@ -22,7 +22,6 @@ func _physics_process(delta):
         var bullet_puff = bullet_puff_scene.instantiate()
         get_parent().add_child(bullet_puff)
         bullet_puff.position = global_transform.origin
-        print("creating a friend!", bullet_puff.position)
         queue_free()
     elif (position - origin).length() >= RANGE:
         queue_free()

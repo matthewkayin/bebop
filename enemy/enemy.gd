@@ -15,7 +15,9 @@ extends CharacterBody3D
 @onready var avoidance_ray_right = $avoidance_ray_right
 @onready var avoidance_ray_up = $avoidance_ray_up
 @onready var avoidance_ray_down = $avoidance_ray_down
+@onready var avoidance_rays = [avoidance_ray, avoidance_ray_up, avoidance_ray_down, avoidance_ray_left, avoidance_ray_right]
 @onready var maneuver_timer = $maneuver_timer
+@onready var maneuver_check_ray = $maneuver_check_ray
 
 @onready var arc_laser_scene = preload("res://projectiles/arc_laser/arc_laser.tscn")
 @onready var laser_scene = preload("res://projectiles/laser/laser.tscn")
@@ -23,8 +25,8 @@ extends CharacterBody3D
 @onready var ship = preload("res://ships/hummingbird.tres")
 
 var rotation_speed = Vector3(0, 0, 0)
-
 var thrust_input = Vector3.ZERO
+var stupidity = 0.5
 
 var has_boost = true
 var boost_impulse = Vector3.ZERO
@@ -50,7 +52,6 @@ var hull = 0
 var direction = Vector3.FORWARD
 
 func _ready():
-    add_to_group("obstacles")
     add_to_group("targets")
     collision_radius = $avoidance_sphere.shape.radius
 
@@ -79,42 +80,54 @@ func _physics_process(delta):
 
         # obstacle avoidance
         var avoidance = Vector3.ZERO
-        for ray in [avoidance_ray, avoidance_ray_right, avoidance_ray_down, avoidance_ray_up, avoidance_ray_left]:
+        for ray in avoidance_rays:
             ray.force_raycast_update()
             if ray.is_colliding():
                 avoidance += -(position + velocity).direction_to(ray.get_collision_point())
         avoidance = avoidance.normalized() * 0.5
 
+        var target_position = target.global_transform.origin + (Vector3(randf_range(0.0, 1.0), randf_range(0.0, 1.0), randf_range(0.0, 1.0)) * 10 * stupidity)
         var desired_direction
 
         # ai chase mode
-        if position.distance_to(target.position) > 20:
-            print("chase")
-            desired_direction = position.direction_to(target.global_transform.origin)
+        if position.distance_to(target_position) > 20:
+            desired_direction = position.direction_to(target_position)
             desired_direction += avoidance
             desired_direction = desired_direction.normalized()
 
             thrust_input.z = -1
         # ai evasive mode
         elif maneuver_timer.is_stopped() and target.target == self and target.weapon_has_lock:
-            print("maneuver")
             # begin barrel roll
             is_maneuvering = true
             desired_direction = direction
             var barrel_roll_direction = 1
             if randi_range(0, 1) == 0:
                 barrel_roll_direction = -1
-            thrust_input.x = barrel_roll_direction
-            var barrel_roll_tween = get_tree().create_tween()
-            barrel_roll_tween.tween_property(mesh, "rotation", mesh.rotation + Vector3(0, 0, 2 * PI * barrel_roll_direction), 1.75)
-            barrel_roll_tween.tween_callback(func(): 
-                is_maneuvering = false
+
+            # check to make sure we don't barrel roll into an obstacle
+            maneuver_check_ray.target_position = position + (transform.basis.x * ship.MAX_THRUST_VELOCITY * 1.75 * barrel_roll_direction)
+            maneuver_check_ray.force_raycast_update()
+            if maneuver_check_ray.is_colliding():
+                barrel_roll_direction *= -1
+                maneuver_check_ray.target_position = position + (transform.basis.x * ship.MAX_THRUST_VELOCITY * 1.75 * barrel_roll_direction)
+                maneuver_check_ray.force_raycast_update()
+                if maneuver_check_ray.is_colliding():
+                    barrel_roll_direction = 0
+
+            if barrel_roll_direction != 0:
+                thrust_input.x = barrel_roll_direction
+                var barrel_roll_tween = get_tree().create_tween()
+                barrel_roll_tween.tween_property(mesh, "rotation", mesh.rotation + Vector3(0, 0, 2 * PI * barrel_roll_direction), 1.75)
+                barrel_roll_tween.tween_callback(func(): 
+                    is_maneuvering = false
+                    maneuver_timer.start(randf_range(5, 120))
+                )
+            else:
                 maneuver_timer.start(randf_range(5, 120))
-            )
         # ai strafe mode
         else:
-            print("strafe")
-            desired_direction = position.direction_to(target.global_transform.origin)
+            desired_direction = position.direction_to(target_position)
             var desired_velocity_direction = position.direction_to(target.global_transform.origin + Vector3(0, 0, 10))
             desired_velocity_direction += avoidance
             desired_velocity_direction = desired_velocity_direction.normalized()
@@ -195,7 +208,10 @@ func _physics_process(delta):
         if weapon_lock_duration[current_weapon] == 0:
             weapon_has_lock = true
         if weapon_has_lock: 
-            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 140))
+            # weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / 140) * (1 - (randf_range(-stupidity, stupidity) * 2)))
+            var aim_error = 1 - randf_range(0, stupidity)
+            print(aim_error)
+            weapons_target = target.position + (target.velocity * (position.distance_to(target.position) / (140 * aim_error)))
             targeting_ray.look_at(weapons_target)
             targeting_ray.force_raycast_update()
             if targeting_ray.is_colliding():
